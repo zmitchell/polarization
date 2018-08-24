@@ -105,3 +105,23 @@ pub fn beam_right_circular() -> Vector2<Complex<f64>> {
     let y = -Complex::i() / 2.0_f64.sqrt();
     Vector2::new(x, y)
 }
+
+/// Produces a linearly polarized beam at the given angle.
+pub fn beam_lin_pol(angle: Angle) -> Vector2<Complex<f64>> {
+    let mut x: f64;
+    let mut y: f64;
+    match angle {
+        Angle::Radians(rad) => {
+            x = rad.cos();
+            y = rad.sin();
+        },
+        Angle::Degrees(deg) => {
+            x = deg.to_radians().cos();
+            y = deg.to_radians().sin();
+        },
+    }
+    Vector2::new(
+        Complex::new(x, 0_f64),
+        Complex::new(y, 0_f64),
+    )
+}
