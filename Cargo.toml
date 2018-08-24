@@ -1,0 +1,9 @@
+[package]
+authors = ["Zach Mitchell <zmitchell@fastmail.com>"]
+name = "polarization"
+version = "0.1.0"
+[dependencies]
+derive_more = "*"
+nalgebra = "~0.16.0"
+num = "*"
+proptest = "*"
