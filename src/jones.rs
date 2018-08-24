@@ -42,7 +42,7 @@ impl JonesVector for Vector2<Complex<f64>> {
         let rel_phase = y_phase - x_phase;
         let y_rel = Complex::from_polar(&y_mag, &rel_phase);
         Vector2::new(
-            Complex::new(x_mag, 0.0),
+            Complex::new(x_mag, 0.0_f64),
             y_rel,
         )
     }
@@ -51,7 +51,7 @@ impl JonesVector for Vector2<Complex<f64>> {
         let (x_mag, x_phase) = self.x.to_polar();
         let (y_mag, y_phase) = self.y.to_polar();
         let rel_phase = y_phase - x_phase;
-        self.x = Complex::from_polar(&x_mag, &0.0);
+        self.x = Complex::from_polar(&x_mag, &0.0_f64);
         self.y = Complex::from_polar(&y_mag, &rel_phase);
     }
 
@@ -73,18 +73,35 @@ impl JonesVector for Vector2<Complex<f64>> {
 /// Produces the Jones vector for a linearly polarized beam that
 /// is parallel to the x-axis.
 pub fn beam_horizontal() -> Vector2<Complex<f64>> {
+    // v = (1, 0)
     Vector2::new(
-        Complex::new(1.0, 0.0),
-        Complex::new(0.0, 0.0),
+        Complex::new(1.0_f64, 0.0_f64),
+        Complex::new(0.0_f64, 0.0_f64),
     )
 }
 
 /// Produces the Jones vector for a linearly polarized beam that
 /// is perpendicular to the x-axis.
 pub fn beam_vertical() -> Vector2<Complex<f64>> {
+    // v = (0, 1)
     Vector2::new(
-        Complex::new(0.0, 0.0),
-        Complex::new(1.0, 0.0),
+        Complex::new(0.0_f64, 0.0_f64),
+        Complex::new(1.0_f64, 0.0_f64),
     )
 }
 
+/// Produces the Jones vector for a beam with left-handed circular polarization.
+pub fn beam_left_circular() -> Vector2<Complex<f64>> {
+    // v = (1/sqrt(2)) * (1, i)
+    let x = Complex::new(1.0_f64 / 2.0_f64.sqrt(), 0.0_f64);
+    let y = Complex::i() / 2.0_f64.sqrt();
+    Vector2::new(x, y)
+}
+
+/// Produces the Jones vector for a beam with right-handed circular polarization.
+pub fn beam_right_circular() -> Vector2<Complex<f64>> {
+    // v = (1/sqrt(2)) * (1, i)
+    let x = Complex::new(1.0_f64 / 2.0_f64.sqrt(), 0.0_f64);
+    let y = -Complex::i() / 2.0_f64.sqrt();
+    Vector2::new(x, y)
+}
