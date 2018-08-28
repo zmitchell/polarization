@@ -70,7 +70,8 @@ impl JonesVector for Vector2<Complex<f64>> {
             self.x.conj(),
             self.y.conj(),
         );
-        let num = conj.dot(self).norm_sqr().sqrt().sqrt();
+        // let num = conj.dot(self).norm_sqr().sqrt().sqrt();
+        let num = conj.dot(self).re;
         if num.is_infinite() {
             Err(JonesError::IntensityTooLarge)
         } else if (num.abs() < 1e-12) && (num.abs() > 0.0) {
@@ -185,14 +186,6 @@ prop_compose! {
     }
 }
 
-// prop_compose! {
-//     fn well_behaved_jones_vector()(x in well_behaved_complexes(),
-//                                    y in well_behaved_complexes(),
-//     ) -> Vector2<Complex<f64>> {
-//         Vector2::new(0, 0)
-//     }
-// }
-
 proptest!{
 
     #[test]
@@ -201,10 +194,8 @@ proptest!{
             Complex::new(n, 0_f64),
             Complex::new(0_f64, 0_f64),
         );
-        let intensity_attempt = beam.intensity();
-        assert!(intensity_attempt.is_ok());
-        let intensity = intensity_attempt.unwrap();
-        assert_approx_eq!(n, intensity);
+        let intensity = beam.intensity().unwrap();
+        assert_approx_eq!(n.powi(2), intensity);
     }
 
     #[test]
