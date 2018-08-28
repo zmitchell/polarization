@@ -3,6 +3,8 @@ authors = ["Zach Mitchell <zmitchell@fastmail.com>"]
 name = "polarization"
 version = "0.1.0"
 [dependencies]
+"alga" = "~0.7.0"
+assert_approx_eq = "*"
 derive_more = "*"
 nalgebra = "~0.16.0"
 num = "*"
