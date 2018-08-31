@@ -6,19 +6,27 @@ use std::result;
 use na::{Matrix2, Vector2};
 use num::complex::Complex;
 use proptest;
+use proptest::num::f64::{NEGATIVE, POSITIVE, ZERO};
 use proptest::prelude::*;
-use proptest::num::f64::{POSITIVE, NEGATIVE, ZERO};
 
 use core::{Angle, BeamPol, Handedness};
+
+type ComplexMatrix = Matrix2<Complex<f64>>;
+type Result<T> = result::Result<T, JonesError>;
 
 #[derive(Debug)]
 pub enum JonesError {
     IntensityTooLarge,
     IntensityTooSmall,
+    MissingParameter(MissingParameter),
     Other(String),
 }
 
-type Result<T> = result::Result<T, JonesError>;
+#[derive(Debug)]
+pub struct MissingParameter {
+    pub typ: String,
+    pub param: String,
+}
 
 impl error::Error for JonesError {
     fn description(&self) -> &str {
@@ -36,10 +44,14 @@ impl fmt::Display for JonesError {
             JonesError::IntensityTooLarge => write!(f, "Intensity error: Intensity is too large"),
             JonesError::IntensityTooSmall => write!(f, "Intensity error: Intensity is too small"),
             JonesError::Other(ref msg) => write!(f, "Other error: {}", msg),
+            JonesError::MissingParameter(ref missing_param) => write!(
+                f,
+                "Missing parameter: {} requires parameter '{}'",
+                missing_param.typ, missing_param.param
+            ),
         }
     }
 }
-
 
 pub trait JonesVector {
     /// The intensity of the beam represented by the Jones vector. Note that
@@ -66,11 +78,8 @@ pub trait JonesVector {
 
 impl JonesVector for Vector2<Complex<f64>> {
     fn intensity(&self) -> Result<f64> {
-        let conj = Vector2::new(
-            self.x.conj(),
-            self.y.conj(),
-        );
-        // let num = conj.dot(self).norm_sqr().sqrt().sqrt();
+        let conj = Vector2::new(self.x.conj(), self.y.conj());
+        // The dot product of v* and v should be real, but Rust doesn't know that
         let num = conj.dot(self).re;
         if num.is_infinite() {
             Err(JonesError::IntensityTooLarge)
@@ -86,10 +95,7 @@ impl JonesVector for Vector2<Complex<f64>> {
         let (y_mag, y_phase) = self.y.to_polar();
         let rel_phase = (y_phase - x_phase) % (2 as f64 * pi);
         let y_rel = Complex::from_polar(&y_mag, &rel_phase);
-        Vector2::new(
-            Complex::from_polar(&x_mag, &0.0_f64),
-            y_rel,
-        )
+        Vector2::new(Complex::from_polar(&x_mag, &0.0_f64), y_rel)
     }
 
     fn remove_common_phase_mut(&mut self) {
@@ -157,16 +163,165 @@ pub fn beam_lin_pol(angle: Angle) -> Vector2<Complex<f64>> {
         Angle::Radians(rad) => {
             x = rad.cos();
             y = rad.sin();
-        },
+        }
         Angle::Degrees(deg) => {
             x = deg.to_radians().cos();
             y = deg.to_radians().sin();
-        },
+        }
     }
-    Vector2::new(
-        Complex::new(x, 0_f64),
-        Complex::new(y, 0_f64),
-    )
+    Vector2::new(Complex::new(x, 0_f64), Complex::new(y, 0_f64))
+}
+
+pub trait JonesMatrix {
+    /// Produce the Jones matrix after rotating the element by the given angle.
+    fn rotated(&mut self, angle: Angle) -> ComplexMatrix;
+
+    /// Rotate the element in-place by the given angle.
+    fn rotate(&mut self, angle: Angle);
+
+    /// Returns the Jones matrix of the optical element.
+    fn matrix(&mut self) -> ComplexMatrix;
+}
+
+/// Returns the matrix of an optical element after it has been rotated around the optical axis by
+/// the given angle.
+pub fn rotate_matrix(mat: &ComplexMatrix, angle: &Angle) -> ComplexMatrix {
+    let rad = match angle {
+        &Angle::Radians(rad) => rad,
+        &Angle::Degrees(deg) => deg.to_radians(),
+    };
+    let rot_mat = Matrix2::new(
+        Complex::new(rad.cos(), 0 as f64),
+        Complex::new(rad.sin(), 0 as f64),
+        Complex::new(-rad.sin(), 0 as f64),
+        Complex::new(rad.cos(), 0 as f64),
+    );
+    let rot_mat_inv = Matrix2::new(
+        Complex::new(rad.cos(), 0 as f64),
+        Complex::new(-rad.sin(), 0 as f64),
+        Complex::new(rad.sin(), 0 as f64),
+        Complex::new(rad.cos(), 0 as f64),
+    );
+    rot_mat_inv * mat * rot_mat
+}
+
+#[derive(Debug)]
+pub enum OpticalElement {
+    Polarizer,
+    QuarterWavePlate,
+    HalfWavePlate,
+    PolarizationRotator,
+    Retarder,
+    DieletricReflection,
+    MetalReflection,
+}
+
+#[derive(Debug)]
+pub struct ElementParams {
+    pub angle: Option<Angle>,
+    pub incident_angle: Option<Angle>,
+    pub azimuthal_angle: Option<Angle>,
+    pub refractive_index: Option<f64>,
+    pub extinction_coefficient: Option<f64>,
+}
+
+#[derive(Debug)]
+pub struct Polarizer {
+    angle: Angle,
+    mat: Option<ComplexMatrix>,
+}
+
+impl Polarizer {
+    pub fn new(angle: Angle) -> Self {
+        Polarizer {
+            angle: angle,
+            mat: None,
+        }
+    }
+}
+
+impl From<ElementParams> for Result<Polarizer> {
+    fn from(params: ElementParams) -> Self {
+        match params.angle {
+            Some(angle) => Ok(Polarizer::new(angle)),
+            None => {
+                let missing = MissingParameter {
+                    typ: "Polarizer".into(),
+                    param: "angle".into(),
+                };
+                Err(JonesError::MissingParameter(missing))
+            }
+        }
+    }
+}
+
+impl JonesMatrix for Polarizer {
+    fn rotated(&mut self, angle: Angle) -> ComplexMatrix {
+        // Just use the default implementation
+        rotate_matrix(&self.matrix(), &angle)
+    }
+
+    fn rotate(&mut self, angle: Angle) {
+        // Just use the default implementation
+        self.mat = Some(rotate_matrix(&self.matrix(), &angle));
+    }
+
+    fn matrix(&mut self) -> ComplexMatrix {
+        // Return the existing matrix if it's already been computed.
+        if let Some(mat) = self.mat {
+            return mat.clone();
+        }
+        // Create a polarizer at angle 0, and rotate it to the desired angle.
+        let x_pol = Matrix2::new(
+            Complex::new(1 as f64, 0 as f64),
+            Complex::new(0 as f64, 0 as f64),
+            Complex::new(0 as f64, 0 as f64),
+            Complex::new(0 as f64, 0 as f64),
+        );
+        let mat_at_angle = rotate_matrix(&x_pol, &self.angle);
+        self.mat = Some(mat_at_angle.clone());
+        mat_at_angle
+    }
+}
+
+#[derive(Debug)]
+pub struct QuarterWavePlate {
+    angle: Angle,
+    mat: Option<ComplexMatrix>,
+}
+
+#[derive(Debug)]
+pub struct HalfWavePlate {
+    angle: Angle,
+    mat: Option<ComplexMatrix>,
+}
+
+#[derive(Debug)]
+pub struct Retarder {
+    angle: Angle,
+    phase: Angle,
+    mat: Option<ComplexMatrix>,
+}
+
+#[derive(Debug)]
+pub struct PolarizationRotator {
+    angle: Angle,
+    mat: Option<ComplexMatrix>,
+}
+
+#[derive(Debug)]
+pub struct DielectricReflection {
+    refractive_index: f64,
+    incident_angle: Angle,
+    azimuthal_angle: Angle,
+    mat: Option<ComplexMatrix>,
+}
+
+#[derive(Debug)]
+pub struct MetalReflection {
+    incident_angle: Angle,
+    azimuthal_angle: Angle,
+    mat: Option<ComplexMatrix>,
 }
 
 prop_compose! {
@@ -184,6 +339,22 @@ prop_compose! {
     ) -> Complex<f64> {
         Complex::new(x, y)
     }
+}
+
+macro_rules! assert_complex_approx_eq {
+    ($x:expr, $y:expr) => {
+        assert_approx_eq!($x.re, $y.re);
+        assert_approx_eq!($x.im, $y.im);
+    };
+}
+
+macro_rules! assert_matrix_approx_eq {
+    ($x:expr, $y:expr) => {
+        assert_complex_approx_eq!($x[(0, 0)], $y[(0, 0)]);
+        assert_complex_approx_eq!($x[(0, 1)], $y[(0, 1)]);
+        assert_complex_approx_eq!($x[(1, 0)], $y[(1, 0)]);
+        assert_complex_approx_eq!($x[(1, 1)], $y[(1, 1)]);
+    };
 }
 
 proptest!{
@@ -250,4 +421,94 @@ proptest!{
         assert_approx_eq!(expected_rad, beam.relative_phase_rad());
         assert_approx_eq!(expected_deg, beam.relative_phase_deg());
     }
+
+    #[test]
+    fn test_rotate_360_degrees_returns_original(m00 in well_behaved_complexes(),
+                                                m01 in well_behaved_complexes(),
+                                                m10 in well_behaved_complexes(),
+                                                m11 in well_behaved_complexes()) {
+        let mat = Matrix2::new(m00, m01, m10, m11);
+        let angle = Angle::Degrees(360 as f64);
+        let rotated = rotate_matrix(&mat, &angle);
+        assert_matrix_approx_eq!(mat, rotated);
+    }
+
+    #[test]
+    fn test_rotate_2pi_rad_returns_original(m00 in well_behaved_complexes(),
+                                            m01 in well_behaved_complexes(),
+                                            m10 in well_behaved_complexes(),
+                                            m11 in well_behaved_complexes()) {
+        let mat = Matrix2::new(m00, m01, m10, m11);
+        let angle = Angle::Radians(2.0 * pi);
+        let rotated = rotate_matrix(&mat, &angle);
+        assert_matrix_approx_eq!(mat, rotated);
+    }
+
+    #[test]
+    fn test_rotate_0_degrees_returns_original(m00 in well_behaved_complexes(),
+                                              m01 in well_behaved_complexes(),
+                                              m10 in well_behaved_complexes(),
+                                              m11 in well_behaved_complexes()) {
+        let mat = Matrix2::new(m00, m01, m10, m11);
+        let angle = Angle::Degrees(0 as f64);
+        let rotated = rotate_matrix(&mat, &angle);
+        assert_matrix_approx_eq!(mat, rotated);
+    }
+
+    #[test]
+    fn test_rotate_0_rad_returns_original(m00 in well_behaved_complexes(),
+                                          m01 in well_behaved_complexes(),
+                                          m10 in well_behaved_complexes(),
+                                          m11 in well_behaved_complexes()) {
+        let mat = Matrix2::new(m00, m01, m10, m11);
+        let angle = Angle::Radians(0 as f64);
+        let rotated = rotate_matrix(&mat, &angle);
+        assert_matrix_approx_eq!(mat, rotated);
+    }
+
+    #[test]
+    fn test_polarizer_attenuation(theta in 0 as f64..90 as f64) {
+        let beam = Vector2::new(Complex::<f64>::new(1.0, 0.0), Complex::<f64>::new(0.0, 0.0));
+        let mut pol = Polarizer::new(Angle::Degrees(theta));
+        let beam_after_pol = pol.matrix() * beam;
+        let expected_intensity = theta.to_radians().cos().powi(2);
+        assert_approx_eq!(expected_intensity, beam_after_pol.intensity().unwrap());
+    }
+
+    #[test]
+    fn test_crossed_polarizers(x in well_behaved_complexes(),
+                               y in well_behaved_complexes(),
+                               theta in 0 as f64..90 as f64) {
+        let beam = Vector2::new(x, y);
+        let mut first_pol = Polarizer::new(Angle::Degrees(theta));
+        let mut second_pol = Polarizer::new(Angle::Degrees(theta + 90.0));
+        let beam_after = second_pol.matrix() * first_pol.matrix() * beam;
+        assert_approx_eq!(0.0, beam_after.intensity().unwrap());
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn test_horizontal_polarizer() {
+    let mut pol = Polarizer::new(Angle::Degrees(0 as f64));
+    let expected = ComplexMatrix::new(
+        Complex::new(1.0, 0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(0.0, 0.0),
+    );
+    assert_matrix_approx_eq!(pol.matrix(), expected);
+}
+
+#[cfg(test)]
+#[test]
+fn test_vertical_polarizer() {
+    let mut pol = Polarizer::new(Angle::Degrees(90 as f64));
+    let expected = ComplexMatrix::new(
+        Complex::new(0.0, 0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(0.0, 0.0),
+        Complex::new(1.0, 0.0),
+    );
+    assert_matrix_approx_eq!(pol.matrix(), expected);
 }
