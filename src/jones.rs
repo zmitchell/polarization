@@ -227,7 +227,6 @@ pub struct ElementParams {
 
 #[derive(Debug)]
 pub struct Polarizer {
-    angle: Angle,
     mat: ComplexMatrix,
 }
 
@@ -241,7 +240,6 @@ impl Polarizer {
         );
         let mat_at_angle = rotate_matrix(&x_pol, &angle);
         Polarizer {
-            angle: angle,
             mat: mat_at_angle,
         }
     }
@@ -280,26 +278,21 @@ impl JonesMatrix for Polarizer {
 
 #[derive(Debug)]
 pub struct QuarterWavePlate {
-    angle: Angle,
     mat: ComplexMatrix,
 }
 
 #[derive(Debug)]
 pub struct HalfWavePlate {
-    angle: Angle,
     mat: ComplexMatrix,
 }
 
 #[derive(Debug)]
 pub struct Retarder {
-    angle: Angle,
-    phase: Angle,
     mat: ComplexMatrix,
 }
 
 #[derive(Debug)]
 pub struct PolarizationRotator {
-    angle: Angle,
     mat: ComplexMatrix,
 }
 
