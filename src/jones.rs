@@ -337,6 +337,51 @@ pub struct HalfWavePlate {
     mat: ComplexMatrix,
 }
 
+impl HalfWavePlate {
+    pub fn new(angle: Angle) -> Self {
+        let rad = match angle {
+            Angle::Degrees(deg) => deg.to_radians(),
+            Angle::Radians(rad) => rad,
+        };
+        let sin2 = Complex::<f64>::new((2.0 * rad).sin(), 0.0);
+        let cos2 = Complex::<f64>::new((2.0 * rad).cos(), 0.0);
+        let mat = Matrix2::new(
+            cos2, sin2,
+            sin2, -cos2
+        );
+        HalfWavePlate { mat: mat }
+    }
+}
+
+impl From<ElementParams> for Result<HalfWavePlate> {
+    fn from(params: ElementParams) -> Result<HalfWavePlate> {
+        match params.angle {
+            Some(angle) => Ok(HalfWavePlate::new(angle)),
+            None => {
+                let missing = MissingParameter {
+                    typ: "HalfWavePlate".into(),
+                    param: "angle".into(),
+                };
+                Err(JonesError::MissingParameter(missing))
+            }
+        }
+    }
+}
+
+impl JonesMatrix for HalfWavePlate {
+    fn rotated(&self, angle: Angle) -> ComplexMatrix {
+        rotate_matrix(&self.mat, &angle)
+    }
+
+    fn rotate(&mut self, angle: Angle) {
+        self.mat = rotate_matrix(&self.mat, &angle);
+    }
+
+    fn matrix(&self) -> ComplexMatrix {
+        self.mat.clone()
+    }
+}
+
 #[derive(Debug)]
 pub struct Retarder {
     mat: ComplexMatrix,
@@ -530,6 +575,16 @@ proptest!{
         let beam_after = second_pol.matrix() * first_pol.matrix() * beam;
         assert_approx_eq!(0.0, beam_after.intensity().unwrap());
     }
+
+    #[test]
+    fn test_hwp_reflects_polarization(theta in 0 as f64..90 as f64) {
+        let beam = beam_lin_pol(Angle::Degrees(theta));
+        let expected_reflection = beam_lin_pol(Angle::Degrees(-theta));
+        let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
+        let beam_after = hwp.matrix() * beam;
+        assert_beam_approx_eq!(expected_reflection, beam_after);
+    }
+
 }
 
 #[cfg(test)]
@@ -597,6 +652,22 @@ mod non_prop_tests {
         // Right-hand circularly polarized beam
         let expected_beam = Vector2::new(prefactor * 1.0, prefactor * (-1.0) * Complex::<f64>::i());
         assert_beam_approx_eq!(beam_after, expected_beam);
+    }
+
+    #[test]
+    fn test_hwp_ignores_parallel_beam() {
+        let beam = Vector2::new(Complex::<f64>::new(1.0, 0.0), Complex::<f64>::new(0.0, 0.0));
+        let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
+        let beam_after = hwp.matrix() * beam;
+        assert_beam_approx_eq!(beam, beam_after);
+    }
+
+    #[test]
+    fn test_hwp_ignores_perpendicular_beam() {
+        let beam = Vector2::new(Complex::<f64>::new(0.0, 0.0), Complex::<f64>::new(1.0, 0.0));
+        let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
+        let beam_after = hwp.matrix() * hwp.matrix() * beam;
+        assert_beam_approx_eq!(beam, beam_after);
     }
 
 }
