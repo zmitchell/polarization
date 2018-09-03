@@ -232,14 +232,18 @@ pub struct Polarizer {
 
 impl Polarizer {
     pub fn new(angle: Angle) -> Self {
-        let x_pol = Matrix2::new(
-            Complex::new(1 as f64, 0 as f64),
-            Complex::new(0 as f64, 0 as f64),
-            Complex::new(0 as f64, 0 as f64),
-            Complex::new(0 as f64, 0 as f64),
+        let rad = match angle {
+            Angle::Degrees(ang) => ang.to_radians(),
+            Angle::Radians(ang) => ang,
+        };
+        let cos_2 = Complex::<f64>::new(rad.cos().powi(2), 0.0);
+        let sin_2 = Complex::<f64>::new(rad.sin().powi(2), 0.0);
+        let sin_cos = Complex::<f64>::new(rad.sin() * rad.cos(), 0.0);
+        let mat = Matrix2::new(
+            cos_2, sin_cos,
+            sin_cos, sin_2,
         );
-        let mat_at_angle = rotate_matrix(&x_pol, &angle);
-        Polarizer { mat: mat_at_angle }
+        Polarizer { mat: mat }
     }
 }
 
