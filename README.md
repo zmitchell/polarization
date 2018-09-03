@@ -3,9 +3,9 @@
 This is a barebones library for doing Jones calculus. It is currently a work in progress, so most of the functionality is missing. I have plans to implement the following optical elements:
 
 * Linear polarizer (done)
-* Polarization rotator
-* Quarter wave plate
-* Half wave plate
+* Polarization rotator (done)
+* Quarter wave plate (done)
+* Half wave plate (done)
 * Arbitrary retarder
 * Reflection from a dielectric surface
 * Reflection from a metal surface
