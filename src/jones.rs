@@ -241,7 +241,7 @@ impl Polarizer {
         let sin_2 = Complex::<f64>::new(rad.sin().powi(2), 0.0);
         let sin_cos = Complex::<f64>::new(rad.sin() * rad.cos(), 0.0);
         let mat = Matrix2::new(cos_2, sin_cos, sin_cos, sin_2);
-        Polarizer { mat: mat }
+        Polarizer { mat }
     }
 }
 
@@ -272,7 +272,7 @@ impl JonesMatrix for Polarizer {
     }
 
     fn matrix(&self) -> ComplexMatrix {
-        self.mat.clone()
+        self.mat
     }
 }
 
@@ -297,7 +297,7 @@ impl QuarterWavePlate {
             sin_cos - i * sin_cos,
             sin_squared + i * cos_squared,
         );
-        QuarterWavePlate { mat: mat }
+        QuarterWavePlate { mat }
     }
 }
 
@@ -326,7 +326,7 @@ impl JonesMatrix for QuarterWavePlate {
     }
 
     fn matrix(&self) -> ComplexMatrix {
-        self.mat.clone()
+        self.mat
     }
 }
 
@@ -344,7 +344,7 @@ impl HalfWavePlate {
         let sin2 = Complex::<f64>::new((2.0 * rad).sin(), 0.0);
         let cos2 = Complex::<f64>::new((2.0 * rad).cos(), 0.0);
         let mat = Matrix2::new(cos2, sin2, sin2, -cos2);
-        HalfWavePlate { mat: mat }
+        HalfWavePlate { mat }
     }
 }
 
@@ -373,7 +373,7 @@ impl JonesMatrix for HalfWavePlate {
     }
 
     fn matrix(&self) -> ComplexMatrix {
-        self.mat.clone()
+        self.mat
     }
 }
 
@@ -402,7 +402,7 @@ impl Retarder {
         let c = sin * cos - xi * sin * cos;
         let d = sin_2 + xi * cos_2;
         let mat = Matrix2::new(a, b, c, d);
-        Retarder { mat: mat }
+        Retarder { mat }
     }
 }
 
@@ -451,7 +451,7 @@ impl JonesMatrix for Retarder {
     }
 
     fn matrix(&self) -> ComplexMatrix {
-        self.mat.clone()
+        self.mat
     }
 }
 
@@ -469,7 +469,7 @@ impl PolarizationRotator {
         let sin = Complex::<f64>::new(rad.sin(), 0.0);
         let cos = Complex::<f64>::new(rad.cos(), 0.0);
         let mat = Matrix2::new(cos, -sin, sin, cos);
-        PolarizationRotator { mat: mat }
+        PolarizationRotator { mat }
     }
 }
 
@@ -500,7 +500,7 @@ impl JonesMatrix for PolarizationRotator {
     }
 
     fn matrix(&self) -> ComplexMatrix {
-        self.mat.clone()
+        self.mat
     }
 }
 

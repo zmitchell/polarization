@@ -11,7 +11,7 @@ pub enum Handedness {
     Right,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Angle {
     Degrees(f64),
     Radians(f64),
