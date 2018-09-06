@@ -6,7 +6,7 @@ This is a barebones library for doing Jones calculus. It is currently a work in 
 * Polarization rotator (done)
 * Quarter wave plate (done)
 * Half wave plate (done)
-* Arbitrary retarder
+* Arbitrary retarder (done)
 * Reflection from a dielectric surface
 * Reflection from a metal surface
 
