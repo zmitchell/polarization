@@ -2,11 +2,11 @@ use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    beam_lin_pol, rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix,
+    rotate_matrix, Angle, Beam, ComplexMatrix, ElementParams, JonesError, JonesMatrix, JonesVector,
     MissingParameter, Result,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Retarder {
     mat: ComplexMatrix,
 }
@@ -21,10 +21,10 @@ impl Retarder {
             Angle::Degrees(deg) => deg.to_radians(),
             Angle::Radians(rad) => rad,
         };
-        let sin = Complex::<f64>::new(angle_rad.sin(), 0.0);
-        let cos = Complex::<f64>::new(angle_rad.cos(), 0.0);
-        let sin_2 = Complex::<f64>::new(angle_rad.sin().powi(2), 0.0);
-        let cos_2 = Complex::<f64>::new(angle_rad.cos().powi(2), 0.0);
+        let sin = Complex::new(angle_rad.sin(), 0_f64);
+        let cos = Complex::new(angle_rad.cos(), 0_f64);
+        let sin_2 = Complex::new(angle_rad.sin().powi(2), 0_f64);
+        let cos_2 = Complex::new(angle_rad.cos().powi(2), 0_f64);
         let xi = (Complex::<f64>::i() * phase_rad).exp();
         let a = cos_2 + xi * sin_2;
         let b = sin * cos - xi * sin * cos;
@@ -71,8 +71,10 @@ impl From<ElementParams> for Result<Retarder> {
 }
 
 impl JonesMatrix for Retarder {
-    fn rotated(&self, angle: Angle) -> ComplexMatrix {
-        rotate_matrix(&self.mat, &angle)
+    fn rotated(&self, angle: Angle) -> Self {
+        Retarder {
+            mat: rotate_matrix(&self.mat, &angle),
+        }
     }
 
     fn rotate(&mut self, angle: Angle) {
@@ -86,25 +88,25 @@ impl JonesMatrix for Retarder {
 
 proptest! {
     #[test]
-    fn test_retarder_transparent_with_phase_zero(theta1 in 0 as f64..360 as f64,
-                                                 theta2 in 0 as f64..360 as f64,) {
-        let beam = beam_lin_pol(Angle::Degrees(theta1));
+    fn test_retarder_transparent_with_phase_zero(theta1 in 0_f64..360_f64,
+                                                 theta2 in 0_f64..360_f64,) {
+        let beam = Beam::linear(Angle::Degrees(theta1));
         let retarder = Retarder::new(Angle::Degrees(theta2), Angle::Degrees(0.0));
-        let beam_after = retarder.matrix() * beam;
+        let beam_after = beam.apply_element(retarder);
         assert_beam_approx_eq!(beam_after, beam);
     }
 
     #[test]
-    fn test_retarder_transparent_with_phase_2pi(theta1 in 0 as f64..360 as f64,
-                                                theta2 in 0 as f64..360 as f64,) {
-        let beam = beam_lin_pol(Angle::Degrees(theta1));
+    fn test_retarder_transparent_with_phase_2pi(theta1 in 0_f64..360_f64,
+                                                theta2 in 0_f64..360_f64,) {
+        let beam = Beam::linear(Angle::Degrees(theta1));
         let retarder = Retarder::new(Angle::Degrees(theta2), Angle::Degrees(360.0));
-        let beam_after = retarder.matrix() * beam;
+        let beam_after = beam.apply_element(retarder);
         assert_beam_approx_eq!(beam_after, beam);
     }
 
     #[test]
-    fn test_retarder_reduces_to_qwp(theta in 0 as f64..360 as f64) {
+    fn test_retarder_reduces_to_qwp(theta in 0_f64..360_f64) {
         use jones::qwp::QuarterWavePlate;
         let qwp = QuarterWavePlate::new(Angle::Degrees(theta));
         let retarder = Retarder::new(Angle::Degrees(theta), Angle::Degrees(90.0));
@@ -112,7 +114,7 @@ proptest! {
     }
 
     #[test]
-    fn test_retarder_reduces_to_hwp(theta in 0 as f64..360 as f64) {
+    fn test_retarder_reduces_to_hwp(theta in 0_f64..360_f64) {
         use jones::hwp::HalfWavePlate;
         let hwp = HalfWavePlate::new(Angle::Degrees(theta));
         let retarder = Retarder::new(Angle::Degrees(theta), Angle::Degrees(180.0));

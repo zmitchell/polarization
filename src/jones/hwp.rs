@@ -2,11 +2,11 @@ use na::{Matrix2, Vector2};
 use num::complex::Complex;
 
 use super::common::{
-    beam_lin_pol, rotate_matrix, well_behaved_complexes, well_behaved_doubles, Angle,
-    ComplexMatrix, ElementParams, JonesError, JonesMatrix, JonesVector, MissingParameter, Result,
+    rotate_matrix, well_behaved_complexes, well_behaved_doubles, Angle, Beam, ComplexMatrix,
+    ElementParams, JonesError, JonesMatrix, JonesVector, MissingParameter, Result,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct HalfWavePlate {
     mat: ComplexMatrix,
 }
@@ -17,8 +17,8 @@ impl HalfWavePlate {
             Angle::Degrees(deg) => deg.to_radians(),
             Angle::Radians(rad) => rad,
         };
-        let sin2 = Complex::<f64>::new((2.0 * rad).sin(), 0.0);
-        let cos2 = Complex::<f64>::new((2.0 * rad).cos(), 0.0);
+        let sin2 = Complex::new((2_f64 * rad).sin(), 0_f64);
+        let cos2 = Complex::new((2_f64 * rad).cos(), 0_f64);
         let mat = Matrix2::new(cos2, sin2, sin2, -cos2);
         HalfWavePlate { mat }
     }
@@ -40,8 +40,10 @@ impl From<ElementParams> for Result<HalfWavePlate> {
 }
 
 impl JonesMatrix for HalfWavePlate {
-    fn rotated(&self, angle: Angle) -> ComplexMatrix {
-        rotate_matrix(&self.mat, &angle)
+    fn rotated(&self, angle: Angle) -> Self {
+        HalfWavePlate {
+            mat: rotate_matrix(&self.mat, &angle),
+        }
     }
 
     fn rotate(&mut self, angle: Angle) {
@@ -59,28 +61,32 @@ mod test {
 
     #[test]
     fn test_hwp_ignores_parallel_beam() {
-        let beam = Vector2::new(Complex::<f64>::new(1.0, 0.0), Complex::<f64>::new(0.0, 0.0));
+        let beam = Beam::new(Complex::new(1_f64, 0_f64), Complex::new(0_f64, 0_f64));
         let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
-        let beam_after = hwp.matrix() * beam;
-        assert_beam_approx_eq!(beam, beam_after);
+        let beam_after = beam.apply_element(hwp);
+        assert_beam_approx_eq!(beam_after, beam);
     }
 
     #[test]
     fn test_hwp_ignores_perpendicular_beam() {
-        let beam = Vector2::new(Complex::<f64>::new(0.0, 0.0), Complex::<f64>::new(1.0, 0.0));
+        // This is a vertical beam i.e. (0, 1)
+        let beam = Beam::new(Complex::new(0_f64, 0_f64), Complex::new(1_f64, 0_f64));
         let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
-        let beam_after = hwp.matrix() * hwp.matrix() * beam;
-        assert_beam_approx_eq!(beam, beam_after);
+        // You have to flip reflect the polarization twice to make Rust happy,
+        // even though physically the beam is the same no matter how many times
+        // the beam travels through the half-wave plate.
+        let beam_after = beam.apply_element(hwp).apply_element(hwp);
+        assert_beam_approx_eq!(beam_after, beam);
     }
 }
 
 proptest!{
    #[test]
-   fn test_hwp_reflects_polarization(theta in 0 as f64..90 as f64) {
-       let beam = beam_lin_pol(Angle::Degrees(theta));
-       let expected_reflection = beam_lin_pol(Angle::Degrees(-theta));
+   fn test_hwp_reflects_polarization(theta in 0_f64..90_f64) {
+       let beam = Beam::linear(Angle::Degrees(theta));
+       let expected_beam = Beam::linear(Angle::Degrees(-theta));
        let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
-       let beam_after = hwp.matrix() * beam;
-       assert_beam_approx_eq!(expected_reflection, beam_after);
+       let beam_after = beam.apply_element(hwp);
+       assert_beam_approx_eq!(beam_after, expected_beam);
    }
 }

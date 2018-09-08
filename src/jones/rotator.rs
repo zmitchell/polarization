@@ -3,10 +3,10 @@ use num::complex::Complex;
 #[macro_use]
 use super::common::{
     ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter, Result, rotate_matrix,
-    beam_lin_pol, Angle,
+    Angle, Beam, JonesVector,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct PolarizationRotator {
     mat: ComplexMatrix,
 }
@@ -17,8 +17,8 @@ impl PolarizationRotator {
             Angle::Degrees(ang) => ang.to_radians(),
             Angle::Radians(ang) => ang,
         };
-        let sin = Complex::<f64>::new(rad.sin(), 0.0);
-        let cos = Complex::<f64>::new(rad.cos(), 0.0);
+        let sin = Complex::new(rad.sin(), 0_f64);
+        let cos = Complex::new(rad.cos(), 0_f64);
         let mat = Matrix2::new(cos, -sin, sin, cos);
         PolarizationRotator { mat }
     }
@@ -40,9 +40,11 @@ impl From<ElementParams> for Result<PolarizationRotator> {
 }
 
 impl JonesMatrix for PolarizationRotator {
-    fn rotated(&self, angle: Angle) -> ComplexMatrix {
+    fn rotated(&self, angle: Angle) -> Self {
         // Just use the default implementation
-        rotate_matrix(&self.matrix(), &angle)
+        PolarizationRotator {
+            mat: rotate_matrix(&self.matrix(), &angle),
+        }
     }
 
     fn rotate(&mut self, angle: Angle) {
@@ -58,10 +60,10 @@ impl JonesMatrix for PolarizationRotator {
 proptest! {
    #[test]
    fn test_polarization_rotator_rotates(theta in 0 as f64..360 as f64) {
-       let beam = beam_lin_pol(Angle::Degrees(0.0));
-       let expected_beam = beam_lin_pol(Angle::Degrees(theta));
+       let beam = Beam::linear(Angle::Degrees(0.0));
+       let expected_beam = Beam::linear(Angle::Degrees(theta));
        let rotator = PolarizationRotator::new(Angle::Degrees(theta));
-       let beam_after = rotator.matrix() * beam;
+       let beam_after = beam.apply_element(rotator);
        assert_beam_approx_eq!(beam_after, expected_beam);
    }
 }

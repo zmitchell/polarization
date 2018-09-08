@@ -78,7 +78,24 @@ impl fmt::Display for JonesError {
     }
 }
 
+#[derive(Debug)]
+pub enum Polarization {
+    Linear(Angle),
+    Circular(Handedness),
+    Elliptical(Complex<f64>, Complex<f64>),
+}
+
+#[derive(Debug)]
+pub enum Handedness {
+    Left,
+    Right,
+}
+
 pub trait JonesVector {
+    /// Construct a beam from the specified type of polarization. The intensity
+    /// of the beam will be 1.
+    fn from_polarization(pol: Polarization) -> Self;
+
     /// The intensity of the beam represented by the Jones vector. Note that
     /// this is simply `V* x V`.
     fn intensity(&self) -> Result<f64>;
@@ -99,13 +116,76 @@ pub trait JonesVector {
     /// Returns the relative phase between the x- and y-components of the vector
     /// in radians.
     fn relative_phase_rad(&self) -> f64;
+
+    /// Returns the two-element Jones vector.
+    fn vector(&self) -> ComplexVector;
+
+    /// Returns a beam that is the result of passing the current beam through
+    /// the provided optical element.
+    fn apply_element<T: JonesMatrix>(&self, elem: T) -> Self;
+
+    /// Replace the current beam with the beam that results from passing the current
+    /// beam through the provided optical element.
+    fn apply_element_mut<T: JonesMatrix>(&mut self, elem: T);
 }
 
-impl JonesVector for Vector2<Complex<f64>> {
+#[derive(Debug)]
+pub struct Beam {
+    vec: ComplexVector,
+}
+
+impl Beam {
+    pub fn new(x: Complex<f64>, y: Complex<f64>) -> Self {
+        Beam {
+            vec: ComplexVector::new(x, y),
+        }
+    }
+
+    pub fn linear(angle: Angle) -> Self {
+        let rad = match angle {
+            Angle::Radians(rad) => rad,
+            Angle::Degrees(deg) => deg.to_radians(),
+        };
+        let x = Complex::<f64>::new(rad.cos(), 0.0);
+        let y = Complex::<f64>::new(rad.sin(), 0.0);
+        Beam {
+            vec: ComplexVector::new(x, y),
+        }
+    }
+
+    pub fn circular(hand: Handedness) -> Self {
+        let norm = (1_f64 / 2_f64).sqrt();
+        let i = Complex::<f64>::i();
+        let x = Complex::<f64>::new(norm, 0.0);
+        let y = match hand {
+            Handedness::Left => norm * i,
+            Handedness::Right => -norm * i,
+        };
+        Beam {
+            vec: ComplexVector::new(x, y),
+        }
+    }
+
+    pub fn from_vec(v: ComplexVector) -> Self {
+        Beam { vec: v }
+    }
+}
+
+impl JonesVector for Beam {
+    fn from_polarization(pol: Polarization) -> Self {
+        use self::Polarization::*;
+
+        match pol {
+            Linear(angle) => Beam::linear(angle),
+            Circular(hand) => Beam::circular(hand),
+            Elliptical(x, y) => Beam::new(x, y),
+        }
+    }
+
     fn intensity(&self) -> Result<f64> {
-        let conj = Vector2::new(self.x.conj(), self.y.conj());
+        let conj = ComplexVector::new(self.vec.x.conj(), self.vec.y.conj());
         // The dot product of v* and v should be real, but Rust doesn't know that
-        let num = conj.dot(self).re;
+        let num = conj.dot(&self.vec).re;
         if num.is_infinite() {
             Err(JonesError::IntensityTooLarge)
         } else if (num.abs() < 1e-12) && (num.abs() > 0.0) {
@@ -116,90 +196,53 @@ impl JonesVector for Vector2<Complex<f64>> {
     }
 
     fn remove_common_phase(&self) -> Self {
-        let (x_mag, x_phase) = self.x.to_polar();
-        let (y_mag, y_phase) = self.y.to_polar();
-        let rel_phase = (y_phase - x_phase) % (2 as f64 * pi);
+        let (x_mag, x_phase) = self.vec.x.to_polar();
+        let (y_mag, y_phase) = self.vec.y.to_polar();
+        let rel_phase = (y_phase - x_phase) % (2_f64 * pi);
         let y_rel = Complex::from_polar(&y_mag, &rel_phase);
-        Vector2::new(Complex::from_polar(&x_mag, &0.0_f64), y_rel)
+        let x = Complex::<f64>::new(x_mag, 0.0);
+        Beam {
+            vec: ComplexVector::new(x, y_rel),
+        }
     }
 
     fn remove_common_phase_mut(&mut self) {
-        let (x_mag, x_phase) = self.x.to_polar();
-        let (y_mag, y_phase) = self.y.to_polar();
-        let rel_phase = (y_phase - x_phase) % (2 as f64 * pi);
-        self.x = Complex::from_polar(&x_mag, &0.0_f64);
-        self.y = Complex::from_polar(&y_mag, &rel_phase);
+        let (x_mag, x_phase) = self.vec.x.to_polar();
+        let (y_mag, y_phase) = self.vec.y.to_polar();
+        let rel_phase = (y_phase - x_phase) % (2_f64 * pi);
+        self.vec.x = Complex::from_polar(&x_mag, &0_f64);
+        self.vec.y = Complex::from_polar(&y_mag, &rel_phase);
     }
 
     fn relative_phase_deg(&self) -> f64 {
-        let (_, x_phase) = self.x.to_polar();
-        let (_, y_phase) = self.y.to_polar();
+        let (_, x_phase) = self.vec.x.to_polar();
+        let (_, y_phase) = self.vec.y.to_polar();
         y_phase.to_degrees() - x_phase.to_degrees()
     }
 
     fn relative_phase_rad(&self) -> f64 {
-        let (_, x_phase) = self.x.to_polar();
-        let (_, y_phase) = self.y.to_polar();
+        let (_, x_phase) = self.vec.x.to_polar();
+        let (_, y_phase) = self.vec.y.to_polar();
         y_phase - x_phase
     }
-}
 
-/// Produces the Jones vector for a linearly polarized beam that
-/// is parallel to the x-axis.
-pub fn beam_horizontal() -> Vector2<Complex<f64>> {
-    // v = (1, 0)
-    Vector2::new(
-        Complex::new(1.0_f64, 0.0_f64),
-        Complex::new(0.0_f64, 0.0_f64),
-    )
-}
-
-/// Produces the Jones vector for a linearly polarized beam that
-/// is perpendicular to the x-axis.
-pub fn beam_vertical() -> Vector2<Complex<f64>> {
-    // v = (0, 1)
-    Vector2::new(
-        Complex::new(0.0_f64, 0.0_f64),
-        Complex::new(1.0_f64, 0.0_f64),
-    )
-}
-
-/// Produces the Jones vector for a beam with left-handed circular polarization.
-pub fn beam_left_circular() -> Vector2<Complex<f64>> {
-    // v = (1/sqrt(2)) * (1, i)
-    let x = Complex::new(1.0_f64 / 2.0_f64.sqrt(), 0.0_f64);
-    let y = Complex::i() / 2.0_f64.sqrt();
-    Vector2::new(x, y)
-}
-
-/// Produces the Jones vector for a beam with right-handed circular polarization.
-pub fn beam_right_circular() -> Vector2<Complex<f64>> {
-    // v = (1/sqrt(2)) * (1, i)
-    let x = Complex::new(1.0_f64 / 2.0_f64.sqrt(), 0.0_f64);
-    let y = -Complex::i() / 2.0_f64.sqrt();
-    Vector2::new(x, y)
-}
-
-/// Produces a linearly polarized beam at the given angle.
-pub fn beam_lin_pol(angle: Angle) -> Vector2<Complex<f64>> {
-    let x: f64;
-    let y: f64;
-    match angle {
-        Angle::Radians(rad) => {
-            x = rad.cos();
-            y = rad.sin();
-        }
-        Angle::Degrees(deg) => {
-            x = deg.to_radians().cos();
-            y = deg.to_radians().sin();
-        }
+    fn vector(&self) -> ComplexVector {
+        self.vec
     }
-    Vector2::new(Complex::new(x, 0_f64), Complex::new(y, 0_f64))
+
+    fn apply_element<T: JonesMatrix>(&self, elem: T) -> Self {
+        let vec_after = elem.matrix() * self.vec;
+        Beam::from_vec(vec_after)
+    }
+
+    fn apply_element_mut<T: JonesMatrix>(&mut self, elem: T) {
+        self.vec = elem.matrix() * self.vec;
+    }
 }
 
 pub trait JonesMatrix {
     /// Produce the Jones matrix after rotating the element by the given angle.
-    fn rotated(&self, angle: Angle) -> ComplexMatrix;
+    fn rotated(&self, angle: Angle) -> Self;
 
     /// Rotate the element in-place by the given angle.
     fn rotate(&mut self, angle: Angle);
@@ -256,8 +299,10 @@ macro_rules! assert_complex_approx_eq {
 
 macro_rules! assert_beam_approx_eq {
     ($x:expr, $y:expr) => {
-        assert_complex_approx_eq!($x[0], $y[0]);
-        assert_complex_approx_eq!($x[1], $y[1]);
+        let vec1 = $x.vector();
+        let vec2 = $y.vector();
+        assert_complex_approx_eq!(vec1[0], vec2[0]);
+        assert_complex_approx_eq!(vec1[1], vec2[1]);
     };
 }
 
@@ -270,12 +315,11 @@ macro_rules! assert_matrix_approx_eq {
     };
 }
 
-// JonesVector tests
+// Beam tests
 proptest! {
-
    #[test]
    fn test_intensity_one_real_component(n in well_behaved_doubles()) {
-       let beam = Vector2::new(
+       let beam = Beam::new(
            Complex::new(n, 0_f64),
            Complex::new(0_f64, 0_f64),
        );
@@ -286,7 +330,7 @@ proptest! {
    #[test]
    fn test_intensity_is_never_negative(x in well_behaved_complexes(),
                                        y in well_behaved_complexes()) {
-       let v = Vector2::new(x, y);
+       let v = Beam::new(x, y);
        prop_assume!(v.intensity().is_ok());
        let intensity = v.intensity().unwrap();
        assert!(intensity >= 0.0);
@@ -300,30 +344,29 @@ proptest! {
        let yr = y.re;
        let yi = y.im;
        let by_hand = xr.powi(2) + xi.powi(2) + yr.powi(2) + yi.powi(2);
-       let v = Vector2::new(x, y);
-       prop_assume!(v.intensity().is_ok());
-       assert_approx_eq!(v.intensity().unwrap(), by_hand);
+       let beam = Beam::new(x, y);
+       prop_assume!(beam.intensity().is_ok());
+       assert_approx_eq!(beam.intensity().unwrap(), by_hand);
    }
 
    #[test]
    fn test_common_phase(x in well_behaved_complexes(),
                         y in well_behaved_complexes()) {
        let y_phase_new = y.arg() - x.arg();
-       let beam = Vector2::new(x, y);
+       let beam = Beam::new(x, y);
        let new_beam = beam.remove_common_phase();
-       assert_approx_eq!(new_beam.x.arg(), 0.0 as f64);
-       assert_approx_eq!(new_beam.y.arg(), y_phase_new % (2_f64 * pi));
-       //
+       assert_approx_eq!(new_beam.vec.x.arg(), 0_f64);
+       assert_approx_eq!(new_beam.vec.y.arg(), y_phase_new % (2_f64 * pi));
    }
 
    #[test]
    fn test_common_phase_mut(x in well_behaved_complexes(),
                             y in well_behaved_complexes()) {
        let y_phase_new = y.arg() - x.arg();
-       let mut beam = Vector2::new(x, y);
+       let mut beam = Beam::new(x, y);
        beam.remove_common_phase_mut();
-       assert_approx_eq!(beam.x.arg(), 0.0 as f64);
-       assert_approx_eq!(beam.y.arg(), y_phase_new % (2_f64 * pi));
+       assert_approx_eq!(beam.vec.x.arg(), 0_f64);
+       assert_approx_eq!(beam.vec.y.arg(), y_phase_new % (2_f64 * pi));
    }
 
    #[test]
@@ -331,7 +374,7 @@ proptest! {
                           y in well_behaved_complexes()) {
        let expected_rad = y.arg() - x.arg();
        let expected_deg = expected_rad.to_degrees();
-       let beam = Vector2::new(x, y);
+       let beam = Beam::new(x, y);
        assert_approx_eq!(expected_rad, beam.relative_phase_rad());
        assert_approx_eq!(expected_deg, beam.relative_phase_deg());
    }

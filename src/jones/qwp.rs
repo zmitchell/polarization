@@ -2,11 +2,11 @@ use na::{Matrix2, Vector2};
 use num::complex::Complex;
 
 use super::common::{
-    pi, rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix,
-    MissingParameter, Result,
+    pi, rotate_matrix, Angle, Beam, ComplexMatrix, ElementParams, JonesError, JonesMatrix,
+    JonesVector, MissingParameter, Result,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct QuarterWavePlate {
     mat: ComplexMatrix,
 }
@@ -17,9 +17,9 @@ impl QuarterWavePlate {
             Angle::Radians(ang) => ang,
             Angle::Degrees(ang) => ang.to_radians(),
         };
-        let cos_squared = Complex::<f64>::new(rad.cos().powi(2), 0.0);
-        let sin_squared = Complex::<f64>::new(rad.sin().powi(2), 0.0);
-        let sin_cos = Complex::<f64>::new(rad.sin() * rad.cos(), 0.0);
+        let cos_squared = Complex::new(rad.cos().powi(2), 0_f64);
+        let sin_squared = Complex::new(rad.sin().powi(2), 0_f64);
+        let sin_cos = Complex::new(rad.sin() * rad.cos(), 0_f64);
         let i = Complex::<f64>::i();
         let mat = Matrix2::new(
             cos_squared + i * sin_squared,
@@ -47,8 +47,10 @@ impl From<ElementParams> for Result<QuarterWavePlate> {
 }
 
 impl JonesMatrix for QuarterWavePlate {
-    fn rotated(&self, angle: Angle) -> ComplexMatrix {
-        rotate_matrix(&self.mat, &angle)
+    fn rotated(&self, angle: Angle) -> Self {
+        QuarterWavePlate {
+            mat: rotate_matrix(&self.mat, &angle),
+        }
     }
 
     fn rotate(&mut self, angle: Angle) {
@@ -66,40 +68,40 @@ mod test {
 
     #[test]
     fn test_horizontal_qwp_doesnt_modify_horizontal_beam() {
-        let beam = Vector2::new(Complex::<f64>::new(1.0, 0.0), Complex::<f64>::new(0.0, 0.0));
+        let beam = Beam::new(Complex::new(1_f64, 0_f64), Complex::new(0_f64, 0_f64));
         let qwp = QuarterWavePlate::new(Angle::Degrees(0.0));
-        let beam_after = qwp.matrix() * beam;
-        assert_beam_approx_eq!(beam, beam_after);
+        let beam_after = beam.apply_element(qwp);
+        assert_beam_approx_eq!(beam_after, beam);
     }
 
     #[test]
     fn test_vertical_qwp_doesnt_modify_vertical_beam() {
-        let beam = Vector2::new(Complex::<f64>::new(0.0, 0.0), Complex::<f64>::new(1.0, 0.0));
+        let beam = Beam::new(Complex::new(0_f64, 0_f64), Complex::new(0_f64, 0_f64));
         let qwp = QuarterWavePlate::new(Angle::Degrees(90.0));
-        let beam_after = qwp.matrix() * beam;
-        assert_beam_approx_eq!(beam, beam_after);
+        let beam_after = beam.apply_element(qwp);
+        assert_beam_approx_eq!(beam_after, beam);
     }
 
     #[test]
     fn test_two_qwps_reflect_polarization() {
         // Horizontal beam, should end up vertical after two QWPs at 45 degrees
-        let horiz_beam = Vector2::new(Complex::<f64>::new(1.0, 0.0), Complex::<f64>::new(0.0, 0.0));
-        let vert_beam = Vector2::new(Complex::<f64>::new(0.0, 0.0), Complex::<f64>::new(1.0, 0.0));
+        let horiz_beam = Beam::new(Complex::new(1_f64, 0_f64), Complex::new(0_f64, 0_f64));
+        let vert_beam = Beam::new(Complex::new(0_f64, 0_f64), Complex::new(1_f64, 0_f64));
         let qwp = QuarterWavePlate::new(Angle::Degrees(45.0));
-        let beam_after = qwp.matrix() * qwp.matrix() * horiz_beam;
-        assert_beam_approx_eq!(vert_beam, beam_after);
+        let beam_after = horiz_beam.apply_element(qwp).apply_element(qwp);
+        assert_beam_approx_eq!(beam_after, vert_beam);
     }
 
     #[test]
     fn test_qwp_circularly_polarizes_beam() {
         // Horizontal beam, should end up right-hand circularly polarized
-        let beam = Vector2::new(Complex::<f64>::new(1.0, 0.0), Complex::<f64>::new(0.0, 0.0));
+        let beam = Beam::new(Complex::new(1_f64, 0_f64), Complex::new(0_f64, 0_f64));
         let qwp = QuarterWavePlate::new(Angle::Degrees(45.0));
-        let beam_after = qwp.matrix() * beam;
+        let beam_after = beam.apply_element(qwp);
         // Constant factor out front, e^(i*pi/4) / sqrt(2)
         let prefactor = (Complex::<f64>::i() * pi / 4.0).exp() / (2.0_f64.sqrt());
         // Right-hand circularly polarized beam
-        let expected_beam = Vector2::new(prefactor * 1.0, prefactor * (-1.0) * Complex::<f64>::i());
+        let expected_beam = Beam::new(prefactor, -prefactor * Complex::<f64>::i());
         assert_beam_approx_eq!(beam_after, expected_beam);
     }
 }
