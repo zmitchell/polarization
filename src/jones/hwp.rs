@@ -2,8 +2,8 @@ use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    rotate_matrix, Angle, ComplexMatrix,
-    ElementParams, JonesError, JonesMatrix, MissingParameter, Result,
+    rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter,
+    Result,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -58,9 +58,7 @@ impl JonesMatrix for HalfWavePlate {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{
-        Beam, JonesVector,
-    };
+    use jones::common::{Beam, JonesVector};
 
     #[test]
     fn test_hwp_ignores_parallel_beam() {

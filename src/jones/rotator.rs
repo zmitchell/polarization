@@ -1,9 +1,9 @@
+use super::common::{
+    rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter,
+    Result,
+};
 use na::Matrix2;
 use num::complex::Complex;
-use super::common::{
-    ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter, Result, rotate_matrix,
-    Angle,
-};
 
 #[derive(Debug, Copy, Clone)]
 pub struct PolarizationRotator {

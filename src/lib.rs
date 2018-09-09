@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+#![allow(dead_code)]
 #[cfg(test)]
 #[macro_use]
 extern crate assert_approx_eq;

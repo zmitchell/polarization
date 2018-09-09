@@ -2,8 +2,8 @@ use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    rotate_matrix, Angle, ComplexMatrix,
-    ElementParams, JonesError, JonesMatrix, MissingParameter, Result,
+    rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter,
+    Result,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -61,9 +61,7 @@ impl JonesMatrix for Polarizer {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{
-        well_behaved_complexes, Beam, JonesVector,
-    };
+    use jones::common::{well_behaved_complexes, Beam, JonesVector};
 
     #[test]
     fn test_horizontal_polarizer() {

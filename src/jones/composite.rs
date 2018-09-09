@@ -1,14 +1,12 @@
-use super::common::{
-    rotate_matrix, Angle, ComplexMatrix, JonesMatrix,
-};
+use super::common::{rotate_matrix, Angle, ComplexMatrix, JonesMatrix};
 
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct CompositeElement {
+pub struct CompositeElement {
     mat: ComplexMatrix,
 }
 
 impl CompositeElement {
-    pub(crate) fn from_matrix(mat: ComplexMatrix) -> Self {
+    pub fn from_matrix(mat: ComplexMatrix) -> Self {
         CompositeElement { mat }
     }
 }

@@ -7,7 +7,7 @@ use std::result;
 use na::{Matrix2, Vector2};
 use num::complex::Complex;
 #[cfg(test)]
-use proptest::{self, num::f64::{NEGATIVE, POSITIVE, ZERO}};
+use proptest::num::f64::{NEGATIVE, POSITIVE, ZERO};
 #[cfg(test)]
 use proptest::prelude::*;
 
@@ -45,6 +45,8 @@ pub enum JonesError {
     IntensityTooLarge,
     IntensityTooSmall,
     MissingParameter(MissingParameter),
+    NoBeam,
+    NoElements,
     Other(String),
 }
 
@@ -75,6 +77,10 @@ impl fmt::Display for JonesError {
                 "Missing parameter: {} requires parameter '{}'",
                 missing_param.typ, missing_param.param
             ),
+            JonesError::NoBeam => {
+                write!(f, "Optical system error: the system does not have a beam")
+            }
+            JonesError::NoElements => write!(f, "Optical system error: the system has no elements"),
         }
     }
 }
@@ -130,7 +136,7 @@ pub trait JonesVector {
     fn apply_element_mut<T: JonesMatrix>(&mut self, elem: T);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Beam {
     vec: ComplexVector,
 }
