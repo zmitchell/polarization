@@ -1,9 +1,9 @@
-use na::{Matrix2, Vector2};
+use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    rotate_matrix, well_behaved_complexes, well_behaved_doubles, Angle, Beam, ComplexMatrix,
-    ElementParams, JonesError, JonesMatrix, JonesVector, MissingParameter, Result,
+    rotate_matrix, Angle, ComplexMatrix,
+    ElementParams, JonesError, JonesMatrix, MissingParameter, Result,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -61,6 +61,9 @@ impl JonesMatrix for Polarizer {
 #[cfg(test)]
 mod test {
     use super::*;
+    use jones::common::{
+        well_behaved_complexes, Beam, JonesVector,
+    };
 
     #[test]
     fn test_horizontal_polarizer() {
@@ -85,26 +88,26 @@ mod test {
         );
         assert_matrix_approx_eq!(pol.matrix(), expected);
     }
-}
 
-proptest! {
-   #[test]
-   fn test_polarizer_attenuation(theta in 0_f64..90_f64) {
-       let beam = Beam::new(Complex::new(1_f64, 0_f64), Complex::new(0_f64, 0_f64));
-       let pol = Polarizer::new(Angle::Degrees(theta));
-       let beam_after = beam.apply_element(pol);
-       let expected_intensity = theta.to_radians().cos().powi(2);
-       assert_approx_eq!(beam_after.intensity().unwrap(), expected_intensity);
-   }
+    proptest! {
+       #[test]
+       fn test_polarizer_attenuation(theta in 0_f64..90_f64) {
+           let beam = Beam::new(Complex::new(1_f64, 0_f64), Complex::new(0_f64, 0_f64));
+           let pol = Polarizer::new(Angle::Degrees(theta));
+           let beam_after = beam.apply_element(pol);
+           let expected_intensity = theta.to_radians().cos().powi(2);
+           assert_approx_eq!(beam_after.intensity().unwrap(), expected_intensity);
+       }
 
-   #[test]
-   fn test_crossed_polarizers(x in well_behaved_complexes(),
-                              y in well_behaved_complexes(),
-                              theta in 0_f64..90_f64) {
-       let beam = Beam::new(x, y);
-       let first_pol = Polarizer::new(Angle::Degrees(theta));
-       let second_pol = Polarizer::new(Angle::Degrees(theta + 90.0));
-       let beam_after = beam.apply_element(first_pol).apply_element(second_pol);
-       assert_approx_eq!(beam_after.intensity().unwrap(), 0.0);
-   }
+       #[test]
+       fn test_crossed_polarizers(x in well_behaved_complexes(),
+                                  y in well_behaved_complexes(),
+                                  theta in 0_f64..90_f64) {
+           let beam = Beam::new(x, y);
+           let first_pol = Polarizer::new(Angle::Degrees(theta));
+           let second_pol = Polarizer::new(Angle::Degrees(theta + 90.0));
+           let beam_after = beam.apply_element(first_pol).apply_element(second_pol);
+           assert_approx_eq!(beam_after.intensity().unwrap(), 0.0);
+       }
+    }
 }

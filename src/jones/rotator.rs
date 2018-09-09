@@ -1,9 +1,8 @@
 use na::Matrix2;
 use num::complex::Complex;
-#[macro_use]
 use super::common::{
     ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter, Result, rotate_matrix,
-    Angle, Beam, JonesVector,
+    Angle,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -57,13 +56,20 @@ impl JonesMatrix for PolarizationRotator {
     }
 }
 
-proptest! {
-   #[test]
-   fn test_polarization_rotator_rotates(theta in 0 as f64..360 as f64) {
-       let beam = Beam::linear(Angle::Degrees(0.0));
-       let expected_beam = Beam::linear(Angle::Degrees(theta));
-       let rotator = PolarizationRotator::new(Angle::Degrees(theta));
-       let beam_after = beam.apply_element(rotator);
-       assert_beam_approx_eq!(beam_after, expected_beam);
-   }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[macro_use]
+    use jones::common::{Beam, JonesVector};
+
+    proptest! {
+        #[test]
+        fn test_polarization_rotator_rotates(theta in 0 as f64..360 as f64) {
+           let beam = Beam::linear(Angle::Degrees(0.0));
+           let expected_beam = Beam::linear(Angle::Degrees(theta));
+           let rotator = PolarizationRotator::new(Angle::Degrees(theta));
+           let beam_after = beam.apply_element(rotator);
+           assert_beam_approx_eq!(beam_after, expected_beam);
+        }
+    }
 }

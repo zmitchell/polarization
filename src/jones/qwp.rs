@@ -1,9 +1,9 @@
-use na::{Matrix2, Vector2};
+use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    pi, rotate_matrix, Angle, Beam, ComplexMatrix, ElementParams, JonesError, JonesMatrix,
-    JonesVector, MissingParameter, Result,
+    rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix,
+    MissingParameter, Result,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -65,6 +65,9 @@ impl JonesMatrix for QuarterWavePlate {
 #[cfg(test)]
 mod test {
     use super::*;
+    use jones::common::{
+        pi, Beam, JonesVector,
+    };
 
     #[test]
     fn test_horizontal_qwp_doesnt_modify_horizontal_beam() {

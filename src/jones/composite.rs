@@ -1,9 +1,5 @@
-use na::{Matrix2, Vector2};
-use num::complex::Complex;
-
 use super::common::{
-    rotate_matrix, well_behaved_complexes, well_behaved_doubles, Angle, ComplexMatrix,
-    ElementParams, JonesError, JonesMatrix, JonesVector, MissingParameter, Result,
+    rotate_matrix, Angle, ComplexMatrix, JonesMatrix,
 };
 
 #[derive(Debug, Copy, Clone)]

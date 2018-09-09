@@ -1,9 +1,9 @@
-use na::{Matrix2, Vector2};
+use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    rotate_matrix, well_behaved_complexes, well_behaved_doubles, Angle, Beam, ComplexMatrix,
-    ElementParams, JonesError, JonesMatrix, JonesVector, MissingParameter, Result,
+    rotate_matrix, Angle, ComplexMatrix,
+    ElementParams, JonesError, JonesMatrix, MissingParameter, Result,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -58,6 +58,9 @@ impl JonesMatrix for HalfWavePlate {
 #[cfg(test)]
 mod test {
     use super::*;
+    use jones::common::{
+        Beam, JonesVector,
+    };
 
     #[test]
     fn test_hwp_ignores_parallel_beam() {
@@ -78,15 +81,15 @@ mod test {
         let beam_after = beam.apply_element(hwp).apply_element(hwp);
         assert_beam_approx_eq!(beam_after, beam);
     }
-}
 
-proptest!{
-   #[test]
-   fn test_hwp_reflects_polarization(theta in 0_f64..90_f64) {
-       let beam = Beam::linear(Angle::Degrees(theta));
-       let expected_beam = Beam::linear(Angle::Degrees(-theta));
-       let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
-       let beam_after = beam.apply_element(hwp);
-       assert_beam_approx_eq!(beam_after, expected_beam);
-   }
+    proptest!{
+       #[test]
+       fn test_hwp_reflects_polarization(theta in 0_f64..90_f64) {
+           let beam = Beam::linear(Angle::Degrees(theta));
+           let expected_beam = Beam::linear(Angle::Degrees(-theta));
+           let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
+           let beam_after = beam.apply_element(hwp);
+           assert_beam_approx_eq!(beam_after, expected_beam);
+       }
+    }
 }

@@ -6,8 +6,9 @@ use std::result;
 
 use na::{Matrix2, Vector2};
 use num::complex::Complex;
-use proptest;
-use proptest::num::f64::{NEGATIVE, POSITIVE, ZERO};
+#[cfg(test)]
+use proptest::{self, num::f64::{NEGATIVE, POSITIVE, ZERO}};
+#[cfg(test)]
 use proptest::prelude::*;
 
 pub type ComplexMatrix = Matrix2<Complex<f64>>;
@@ -254,25 +255,26 @@ pub trait JonesMatrix {
 /// Returns the matrix of an optical element after it has been rotated around the optical axis by
 /// the given angle.
 pub fn rotate_matrix(mat: &ComplexMatrix, angle: &Angle) -> ComplexMatrix {
-    let rad = match angle {
-        &Angle::Radians(rad) => rad,
-        &Angle::Degrees(deg) => deg.to_radians(),
+    let rad = match *angle {
+        Angle::Radians(rad) => rad,
+        Angle::Degrees(deg) => deg.to_radians(),
     };
     let rot_mat = Matrix2::new(
-        Complex::new(rad.cos(), 0 as f64),
-        Complex::new(rad.sin(), 0 as f64),
-        Complex::new(-rad.sin(), 0 as f64),
-        Complex::new(rad.cos(), 0 as f64),
+        Complex::new(rad.cos(), 0_f64),
+        Complex::new(rad.sin(), 0_f64),
+        Complex::new(-rad.sin(), 0_f64),
+        Complex::new(rad.cos(), 0_f64),
     );
     let rot_mat_inv = Matrix2::new(
-        Complex::new(rad.cos(), 0 as f64),
-        Complex::new(-rad.sin(), 0 as f64),
-        Complex::new(rad.sin(), 0 as f64),
-        Complex::new(rad.cos(), 0 as f64),
+        Complex::new(rad.cos(), 0_f64),
+        Complex::new(-rad.sin(), 0_f64),
+        Complex::new(rad.sin(), 0_f64),
+        Complex::new(rad.cos(), 0_f64),
     );
     rot_mat_inv * mat * rot_mat
 }
 
+#[cfg(test)]
 prop_compose! {
     [pub(crate)] fn well_behaved_doubles()(x in (POSITIVE | NEGATIVE | ZERO).prop_filter(
             "Floats should be zero, or between 1e-12 and 1e12",
@@ -282,6 +284,7 @@ prop_compose! {
     }
 }
 
+#[cfg(test)]
 prop_compose! {
     [pub(crate)] fn well_behaved_complexes()(x in well_behaved_doubles(),
                                 y in well_behaved_doubles(),
@@ -290,6 +293,7 @@ prop_compose! {
     }
 }
 
+#[cfg(test)]
 macro_rules! assert_complex_approx_eq {
     ($x:expr, $y:expr) => {
         assert_approx_eq!($x.re, $y.re);
@@ -297,6 +301,7 @@ macro_rules! assert_complex_approx_eq {
     };
 }
 
+#[cfg(test)]
 macro_rules! assert_beam_approx_eq {
     ($x:expr, $y:expr) => {
         let vec1 = $x.vector();
@@ -306,6 +311,7 @@ macro_rules! assert_beam_approx_eq {
     };
 }
 
+#[cfg(test)]
 macro_rules! assert_matrix_approx_eq {
     ($x:expr, $y:expr) => {
         assert_complex_approx_eq!($x[(0, 0)], $y[(0, 0)]);
@@ -316,6 +322,7 @@ macro_rules! assert_matrix_approx_eq {
 }
 
 // Beam tests
+#[cfg(test)]
 proptest! {
    #[test]
    fn test_intensity_one_real_component(n in well_behaved_doubles()) {
@@ -382,6 +389,7 @@ proptest! {
 }
 
 // JonesMatrix tests
+#[cfg(test)]
 proptest! {
 
    #[test]
@@ -390,7 +398,7 @@ proptest! {
                                                m10 in well_behaved_complexes(),
                                                m11 in well_behaved_complexes()) {
        let mat = Matrix2::new(m00, m01, m10, m11);
-       let angle = Angle::Degrees(360 as f64);
+       let angle = Angle::Degrees(360_f64);
        let rotated = rotate_matrix(&mat, &angle);
        assert_matrix_approx_eq!(mat, rotated);
    }
@@ -412,7 +420,7 @@ proptest! {
                                              m10 in well_behaved_complexes(),
                                              m11 in well_behaved_complexes()) {
        let mat = Matrix2::new(m00, m01, m10, m11);
-       let angle = Angle::Degrees(0 as f64);
+       let angle = Angle::Degrees(0_f64);
        let rotated = rotate_matrix(&mat, &angle);
        assert_matrix_approx_eq!(mat, rotated);
    }
@@ -423,7 +431,7 @@ proptest! {
                                          m10 in well_behaved_complexes(),
                                          m11 in well_behaved_complexes()) {
        let mat = Matrix2::new(m00, m01, m10, m11);
-       let angle = Angle::Radians(0 as f64);
+       let angle = Angle::Radians(0_f64);
        let rotated = rotate_matrix(&mat, &angle);
        assert_matrix_approx_eq!(mat, rotated);
    }
