@@ -1,17 +1,24 @@
+//! A quarter-wave plate.
+//!
+//! A quarter-wave plate is an optical retarder commonly used to convert a linearly
+//! polarized beam into a circularly polarized beam or vice versa.
 use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter,
-    Result,
+    rotate_matrix, Angle, ComplexMatrix, JonesMatrix,
 };
 
+/// An ideal quarter-wave plate.
+///
+/// See the module-level documentation for more details.
 #[derive(Debug, Copy, Clone)]
 pub struct QuarterWavePlate {
     mat: ComplexMatrix,
 }
 
 impl QuarterWavePlate {
+    /// Constructs a new quarter-wave plate with its fast axis at `angle`.
     pub fn new(angle: Angle) -> Self {
         let rad = match angle {
             Angle::Radians(ang) => ang,
@@ -31,32 +38,20 @@ impl QuarterWavePlate {
     }
 }
 
-impl From<ElementParams> for Result<QuarterWavePlate> {
-    fn from(params: ElementParams) -> Result<QuarterWavePlate> {
-        match params.angle {
-            Some(angle) => Ok(QuarterWavePlate::new(angle)),
-            None => {
-                let missing = MissingParameter {
-                    typ: "QuarterWavePlate".into(),
-                    param: "angle".into(),
-                };
-                Err(JonesError::MissingParameter(missing))
-            }
-        }
-    }
-}
-
 impl JonesMatrix for QuarterWavePlate {
+    /// Returns the element rotated counter-clockwise by `angle`.
     fn rotated(&self, angle: Angle) -> Self {
         QuarterWavePlate {
             mat: rotate_matrix(&self.mat, &angle),
         }
     }
 
+    /// Rotate the element counter-clockwise by `angle`.
     fn rotate(&mut self, angle: Angle) {
         self.mat = rotate_matrix(&self.mat, &angle);
     }
 
+    /// Returns the 2x2 Jones matrix of the element.
     fn matrix(&self) -> ComplexMatrix {
         self.mat
     }

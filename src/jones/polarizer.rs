@@ -1,17 +1,19 @@
+//! A linear polarizer.
 use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter,
-    Result,
+    rotate_matrix, Angle, ComplexMatrix, JonesMatrix,
 };
 
+/// An ideal linear polarizer.
 #[derive(Debug, Copy, Clone)]
 pub struct Polarizer {
     mat: ComplexMatrix,
 }
 
 impl Polarizer {
+    /// Constructs a new linear polarizer oriented at `angle`.
     pub fn new(angle: Angle) -> Self {
         let rad = match angle {
             Angle::Degrees(ang) => ang.to_radians(),
@@ -25,22 +27,8 @@ impl Polarizer {
     }
 }
 
-impl From<ElementParams> for Result<Polarizer> {
-    fn from(params: ElementParams) -> Self {
-        match params.angle {
-            Some(angle) => Ok(Polarizer::new(angle)),
-            None => {
-                let missing = MissingParameter {
-                    typ: "Polarizer".into(),
-                    param: "angle".into(),
-                };
-                Err(JonesError::MissingParameter(missing))
-            }
-        }
-    }
-}
-
 impl JonesMatrix for Polarizer {
+    /// Returns the element rotated counter-clockwise by `angle`.
     fn rotated(&self, angle: Angle) -> Self {
         // Just use the default implementation
         Polarizer {
@@ -48,11 +36,13 @@ impl JonesMatrix for Polarizer {
         }
     }
 
+    /// Rotate the element counter-clockwise by `angle`.
     fn rotate(&mut self, angle: Angle) {
         // Just use the default implementation
         self.mat = rotate_matrix(&self.mat, &angle);
     }
 
+    /// Returns the 2x2 Jones matrix of the element.
     fn matrix(&self) -> ComplexMatrix {
         self.mat
     }

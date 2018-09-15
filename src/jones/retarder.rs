@@ -1,17 +1,30 @@
+//! An optical retarder.
+//!
+//! A [waveplate](https://en.wikipedia.org/wiki/Waveplate) is an optical device that is used to
+//! introduce a phase difference between the two perpendicular components of a beam's
+//! polarization. Common waveplates are half-wave plates and quarter-wave plates, which introduce
+//! phase differences of `pi` and `pi/2` respectively. A waveplate that introduces an arbitrary
+//! phase difference is commonly referred to as a retarder. The phase difference introduced by the
+//! retarder is commonly quoted as an angle i.e. 90 degrees or `pi` radians.
 use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter,
-    Result,
+    rotate_matrix, Angle, ComplexMatrix, JonesMatrix,
 };
 
+/// An ideal optical retarder that can introduce an arbitrary phase.
 #[derive(Debug, Copy, Clone)]
 pub struct Retarder {
     mat: ComplexMatrix,
 }
 
 impl Retarder {
+    /// Constructs a new retarder.
+    ///
+    /// The constructor takes two arguments, both of which are angles. The first angle describes
+    /// the orientation of the fast-axis of the retarder. The second angle describes the phase
+    /// difference that the retarder introduces.
     pub fn new(angle: Angle, phase: Angle) -> Self {
         let angle_rad = match angle {
             Angle::Degrees(deg) => deg.to_radians(),
@@ -35,52 +48,20 @@ impl Retarder {
     }
 }
 
-impl From<ElementParams> for Result<Retarder> {
-    fn from(params: ElementParams) -> Result<Retarder> {
-        let orientation = match params.angle {
-            Some(angle) => match angle {
-                Angle::Degrees(deg) => Ok(deg.to_radians()),
-                Angle::Radians(rad) => Ok(rad),
-            },
-            None => {
-                let missing = MissingParameter {
-                    typ: "Retarder".into(),
-                    param: "angle".into(),
-                };
-                Err(JonesError::MissingParameter(missing))
-            }
-        }?;
-        let phase = match params.phase {
-            Some(angle) => match angle {
-                Angle::Degrees(deg) => Ok(deg.to_radians()),
-                Angle::Radians(rad) => Ok(rad),
-            },
-            None => {
-                let missing = MissingParameter {
-                    typ: "Retarder".into(),
-                    param: "phase".into(),
-                };
-                Err(JonesError::MissingParameter(missing))
-            }
-        }?;
-        Ok(Retarder::new(
-            Angle::Radians(orientation),
-            Angle::Radians(phase),
-        ))
-    }
-}
-
 impl JonesMatrix for Retarder {
+    /// Returns the element rotated counter-clockwise by `angle`.
     fn rotated(&self, angle: Angle) -> Self {
         Retarder {
             mat: rotate_matrix(&self.mat, &angle),
         }
     }
 
+    /// Rotate the element counter-clockwise by `angle`.
     fn rotate(&mut self, angle: Angle) {
         self.mat = rotate_matrix(&self.mat, &angle);
     }
 
+    /// Returns the 2x2 Jones matrix of the element.
     fn matrix(&self) -> ComplexMatrix {
         self.mat
     }

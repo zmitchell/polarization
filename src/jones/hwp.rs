@@ -1,17 +1,30 @@
+//! A half-wave plate.
+//!
+//! A half-wave plate (HWP) is an optical element that delays the component of the beam
+//! perpendicular to the "fast" axis of the element by a phase of `pi`, or half of a
+//! wavelength. When a linearly polarized beam is incident on a half-wave plate, the
+//! polarization of the beam is reflected about the fast axis of the HWP. This type of
+//! element may be used as an optical isolator, or as a method of rotating the
+//! polarization of a beam without reducing its intensity as would be the case with a
+//! polarizer.
+
 use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{
-    rotate_matrix, Angle, ComplexMatrix, ElementParams, JonesError, JonesMatrix, MissingParameter,
-    Result,
+    rotate_matrix, Angle, ComplexMatrix, JonesMatrix,
 };
 
+/// An ideal half-wave plate.
+///
+/// See the module-level documentation for more details.
 #[derive(Debug, Copy, Clone)]
 pub struct HalfWavePlate {
     mat: ComplexMatrix,
 }
 
 impl HalfWavePlate {
+    /// Constructs a new half-wave plate with its fast axis at `angle`.
     pub fn new(angle: Angle) -> Self {
         let rad = match angle {
             Angle::Degrees(deg) => deg.to_radians(),
@@ -24,32 +37,20 @@ impl HalfWavePlate {
     }
 }
 
-impl From<ElementParams> for Result<HalfWavePlate> {
-    fn from(params: ElementParams) -> Result<HalfWavePlate> {
-        match params.angle {
-            Some(angle) => Ok(HalfWavePlate::new(angle)),
-            None => {
-                let missing = MissingParameter {
-                    typ: "HalfWavePlate".into(),
-                    param: "angle".into(),
-                };
-                Err(JonesError::MissingParameter(missing))
-            }
-        }
-    }
-}
-
 impl JonesMatrix for HalfWavePlate {
+    /// Returns the element rotated counter-clockwise by `angle`.
     fn rotated(&self, angle: Angle) -> Self {
         HalfWavePlate {
             mat: rotate_matrix(&self.mat, &angle),
         }
     }
 
+    /// Rotate the element counter-clockwise by `angle`.
     fn rotate(&mut self, angle: Angle) {
         self.mat = rotate_matrix(&self.mat, &angle);
     }
 
+    /// Returns the 2x2 Jones matrix of the element.
     fn matrix(&self) -> ComplexMatrix {
         self.mat
     }

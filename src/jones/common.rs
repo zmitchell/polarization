@@ -1,3 +1,4 @@
+//! Types and definitions used in other modules.
 #![macro_use]
 use std::error;
 pub use std::f64::consts::PI as pi;
@@ -11,49 +12,53 @@ use proptest::num::f64::{NEGATIVE, POSITIVE, ZERO};
 #[cfg(test)]
 use proptest::prelude::*;
 
+/// A more convenient synonym for the type of 2x2 Jones matrices.
 pub type ComplexMatrix = Matrix2<Complex<f64>>;
+
+/// A more convenient synonym for the type of 2x1 Jones vectors.
 pub type ComplexVector = Vector2<Complex<f64>>;
+
+/// The result type used by `jones`.
+///
+/// Each error contains an `ErrorKind` to indicate the kind of error encountered.
 pub type Result<T> = result::Result<T, JonesError>;
 
-#[derive(Debug)]
-pub enum OpticalElement {
-    Polarizer,
-    QuarterWavePlate,
-    HalfWavePlate,
-    PolarizationRotator,
-    Retarder,
-}
-
+/// An angle.
+///
+/// Angles or phases are more commonly written in radians in physics, but may be more
+/// convenient to write in degrees. Furthermore, explicitly denoting the units for
+/// angles prevents confusion or mistakes.
 #[derive(Debug, Copy, Clone)]
 pub enum Angle {
     Degrees(f64),
     Radians(f64),
 }
 
-#[derive(Debug)]
-pub struct ElementParams {
-    pub angle: Option<Angle>,
-    pub incident_angle: Option<Angle>,
-    pub azimuthal_angle: Option<Angle>,
-    pub refractive_index: Option<f64>,
-    pub extinction_coefficient: Option<f64>,
-    pub phase: Option<Angle>,
-}
-
+/// The different kinds of errors that may occur inside `polarization`.
 #[derive(Debug)]
 pub enum JonesError {
+    /// An error encountered when the calculated intensity becomes infinite.
+    ///
+    /// Calculating the intensity involves squaring the components of the Jones vector.
+    /// If the components of the vector are large enough, the intensity may become
+    /// infinite.
     IntensityTooLarge,
-    IntensityTooSmall,
-    MissingParameter(MissingParameter),
-    NoBeam,
-    NoElements,
-    Other(String),
-}
 
-#[derive(Debug)]
-pub struct MissingParameter {
-    pub typ: String,
-    pub param: String,
+    /// An error encountered when the calculated intensity is too small.
+    ///
+    /// Calculating the intensity involves squaring the components of the Jones vector.
+    /// If the components of the vector are small enough, the intensity may become
+    /// unreasonably small.
+    IntensityTooSmall,
+
+    /// An error encountered when a beam is missing from an optical system.
+    NoBeam,
+
+    /// An error encountered when an optical system contains no elements.
+    NoElements,
+
+    /// An error not covered by the other kinds of errors.
+    Other(String),
 }
 
 impl error::Error for JonesError {
@@ -72,11 +77,6 @@ impl fmt::Display for JonesError {
             JonesError::IntensityTooLarge => write!(f, "Intensity error: Intensity is too large"),
             JonesError::IntensityTooSmall => write!(f, "Intensity error: Intensity is too small"),
             JonesError::Other(ref msg) => write!(f, "Other error: {}", msg),
-            JonesError::MissingParameter(ref missing_param) => write!(
-                f,
-                "Missing parameter: {} requires parameter '{}'",
-                missing_param.typ, missing_param.param
-            ),
             JonesError::NoBeam => {
                 write!(f, "Optical system error: the system does not have a beam")
             }
@@ -85,6 +85,11 @@ impl fmt::Display for JonesError {
     }
 }
 
+/// The types of polarization handled by Jones calculus.
+///
+/// While more exotic forms of polarization are possible i.e. vector polarizations, the
+/// most common type of polarization are linear, circular, and elliptical. The
+/// `Elliptical` variant allows you to specify an arbitrary polarization.
 #[derive(Debug)]
 pub enum Polarization {
     Linear(Angle),
@@ -92,6 +97,10 @@ pub enum Polarization {
     Elliptical(Complex<f64>, Complex<f64>),
 }
 
+/// The handedness of a circularly polarized beam.
+///
+/// A circularly polarized beam may either be left- or right-hand circularly polarized,
+/// as determined by the right hand rule.
 #[derive(Debug)]
 pub enum Handedness {
     Left,
@@ -104,16 +113,16 @@ pub trait JonesVector {
     fn from_polarization(pol: Polarization) -> Self;
 
     /// The intensity of the beam represented by the Jones vector. Note that
-    /// this is simply `V* x V`.
+    /// this is simply `V* x V` and is reported as a dimensionless quantity.
     fn intensity(&self) -> Result<f64>;
 
     /// For the vector `V = (A, B)`, return a new vector with the phase common
     /// to `A` and `B` removed. For the returned vector `V' = (A', B')`, `A'`
-    /// will be real, and `B'` will have some phase relative to `A'`.
+    /// will be real, and `B'` will have a phase relative to `A'`.
     fn remove_common_phase(&self) -> Self;
 
     /// For the vector `V = (A, B)`, remove the phase common to both `A` and `B`
-    /// in place. See `remove_common_phase`.
+    /// in place. See `remove_common_phase` for more details.
     fn remove_common_phase_mut(&mut self);
 
     /// Returns the relative phase between the x- and y-components of the vector
@@ -124,30 +133,34 @@ pub trait JonesVector {
     /// in radians.
     fn relative_phase_rad(&self) -> f64;
 
-    /// Returns the two-element Jones vector.
+    /// Returns the 2x1 Jones vector.
     fn vector(&self) -> ComplexVector;
 
-    /// Returns a beam that is the result of passing the current beam through
+    /// Returns a Jones vector that is the result of passing the current vector through
     /// the provided optical element.
     fn apply_element<T: JonesMatrix>(&self, elem: T) -> Self;
 
-    /// Replace the current beam with the beam that results from passing the current
-    /// beam through the provided optical element.
+    /// Replace the current Jones vector with the result of passing it through the
+    /// provided optical element.
     fn apply_element_mut<T: JonesMatrix>(&mut self, elem: T);
 }
 
+/// An ideal coherent light source i.e. an ideal laser beam.
 #[derive(Debug, Clone)]
 pub struct Beam {
     vec: ComplexVector,
 }
 
 impl Beam {
+    /// Construct a new beam with arbitrary x- and y-components.
     pub fn new(x: Complex<f64>, y: Complex<f64>) -> Self {
         Beam {
             vec: ComplexVector::new(x, y),
         }
     }
 
+    /// Construct a linearly polarized beam at the angle `angle`, where the angle is
+    /// measured counter-clockwise from the x-axis.
     pub fn linear(angle: Angle) -> Self {
         let rad = match angle {
             Angle::Radians(rad) => rad,
@@ -160,6 +173,7 @@ impl Beam {
         }
     }
 
+    /// Construct a circularly polarized beam with the specified handedness.
     pub fn circular(hand: Handedness) -> Self {
         let norm = (1_f64 / 2_f64).sqrt();
         let i = Complex::<f64>::i();
@@ -173,6 +187,10 @@ impl Beam {
         }
     }
 
+    /// Construct a beam from an existing 2x1 vector.
+    ///
+    /// This method is most useful for constructing a `Beam` when you have just received
+    /// a `ComplexVector` as the result of some other operation.
     pub fn from_vec(v: ComplexVector) -> Self {
         Beam { vec: v }
     }
@@ -248,18 +266,17 @@ impl JonesVector for Beam {
 }
 
 pub trait JonesMatrix {
-    /// Produce the Jones matrix after rotating the element by the given angle.
+    /// Return the optical element rotated by the given angle.
     fn rotated(&self, angle: Angle) -> Self;
 
-    /// Rotate the element in-place by the given angle.
+    /// Rotate the optical element in-place by the given angle.
     fn rotate(&mut self, angle: Angle);
 
-    /// Returns the Jones matrix of the optical element.
+    /// Returns the 2x2 Jones matrix of the optical element.
     fn matrix(&self) -> ComplexMatrix;
 }
 
-/// Returns the matrix of an optical element after it has been rotated around the optical axis by
-/// the given angle.
+/// Rotate an optical element by transforming its Jones matrix.
 pub fn rotate_matrix(mat: &ComplexMatrix, angle: &Angle) -> ComplexMatrix {
     let rad = match *angle {
         Angle::Radians(rad) => rad,
