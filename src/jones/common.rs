@@ -44,13 +44,6 @@ pub enum JonesError {
     /// infinite.
     IntensityTooLarge,
 
-    /// An error encountered when the calculated intensity is too small.
-    ///
-    /// Calculating the intensity involves squaring the components of the Jones vector.
-    /// If the components of the vector are small enough, the intensity may become
-    /// unreasonably small.
-    IntensityTooSmall,
-
     /// An error encountered when a beam is missing from an optical system.
     NoBeam,
 
@@ -75,7 +68,6 @@ impl fmt::Display for JonesError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             JonesError::IntensityTooLarge => write!(f, "Intensity error: Intensity is too large"),
-            JonesError::IntensityTooSmall => write!(f, "Intensity error: Intensity is too small"),
             JonesError::Other(ref msg) => write!(f, "Other error: {}", msg),
             JonesError::NoBeam => {
                 write!(f, "Optical system error: the system does not have a beam")
@@ -213,8 +205,6 @@ impl JonesVector for Beam {
         let num = conj.dot(&self.vec).re;
         if num.is_infinite() {
             Err(JonesError::IntensityTooLarge)
-        } else if (num.abs() < 1e-12) && (num.abs() > 0.0) {
-            Err(JonesError::IntensityTooSmall)
         } else {
             Ok(num)
         }
