@@ -2,10 +2,15 @@
 authors = ["Zach Mitchell <zmitchell@fastmail.com>"]
 name = "polarization"
 version = "0.1.0"
+description = "Simulate the polarization of a laser beam"
+repository = "https://github.com/zmitchell/polarization"
+homepage = "https://github.com/zmitchell/polarization"
+readme = "README.md"
+categories = ["science", "simulation"]
+keywords = ["physics", "lasers", "optics"]
+license = "MIT OR Apache-2.0"
 [dependencies]
-"alga" = "~0.7.0"
-assert_approx_eq = "*"
-derive_more = "*"
+assert_approx_eq = "~1.0.0"
 nalgebra = "~0.16.0"
-num = "*"
-proptest = "*"
+num = "~0.2.0"
+proptest = "~0.8.5"
