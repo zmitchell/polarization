@@ -1,6 +1,6 @@
 # Polarization
 [![Documentation](https://docs.rs/polarization/badge.svg)](https://docs.rs/polarization)
-[![Crates.io](https://img.shields.io/crates/v/polarization.svg)](https://crates.io/polarization)
+[![Crates.io](https://img.shields.io/crates/v/polarization.svg)](https://crates.io/crates/polarization)
 ![Licenses](https://img.shields.io/crates/l/polarization.svg)
 
 Have you ever wondered what would happen if you passed a linearly polarized beam
