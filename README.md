@@ -1,16 +1,42 @@
 # Polarization
+[![Documentation](https://docs.rs/polarization/badge.svg)](https://docs.rs/polarization)
+[![Crates.io](https://img.shields.io/crates/v/polarization.svg)](https://crates.io/polarization)
+![Licenses](https://img.shields.io/crates/l/polarization.svg)
 
-This is a barebones library for doing Jones calculus. It is currently a work in progress, so most of the functionality is missing. I have plans to implement the following optical elements:
+Have you ever wondered what would happen if you passed a linearly polarized beam
+through a quarter-wave plate at 46 degrees rather than 45 degrees relative to the
+fast axis of a quarter-wave plate? Who am I kidding, of course you have! This
+library lets you pass a beam through several optical elements and see what comes
+out the other side.
 
-* Linear polarizer (done)
-* Polarization rotator (done)
-* Quarter wave plate (done)
-* Half wave plate (done)
-* Arbitrary retarder (done)
-* Reflection from a dielectric surface
-* Reflection from a metal surface
+The canonical methods for simulating the polarization of a beam are
+[Jones calculus](https://en.wikipedia.org/wiki/Jones_calculus) and
+[Mueller calculus](https://en.wikipedia.org/wiki/Mueller_calculus), but only Jones calculus
+is implemented at this point.
 
-I plan to wrap this library in a CLI program. Another planned feature is the ability to specify the configuration of an optical system in a TOML file to ease the analysis of more complicated optical systems.
+Currently there are several standard optical elements implemented, with support for reflections
+from surfaces (dielectric and metallic) coming in the near future.
+* Linear polarizer
+* Polarization rotator
+* Quarter-wave plate
+* Half-wave plate
+* Retarder
+
+There is support for linearly polarized, circularly polarized, and arbitrarily
+(elliptically) polarized beams.
+
+For more details, check out the [documentation](https://docs.rs/polarization).
+
+## Example
+```rust
+let beam = Beam::linear(Angle::Degrees(0.0));
+let pol = OpticalElement::Polarizer(Polarizer::new(Angle::Degrees(45.0)));
+let system = OpticalSystem::new()
+    .with_beam(beam)
+    .with_element(pol);
+let final_beam: Result<Beam> = system.propagate();
+let final_intensity: Result<f64> = final_beam.intensity();
+```
 
 ## License
 
