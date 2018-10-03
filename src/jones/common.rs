@@ -28,7 +28,7 @@ pub type Result<T> = result::Result<T, JonesError>;
 /// Angles or phases are more commonly written in radians in physics, but may be more
 /// convenient to write in degrees. Furthermore, explicitly denoting the units for
 /// angles prevents confusion or mistakes.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Angle {
     Degrees(f64),
     Radians(f64),
@@ -135,6 +135,12 @@ pub trait JonesVector {
     /// Replace the current Jones vector with the result of passing it through the
     /// provided optical element.
     fn apply_element_mut<T: JonesMatrix>(&mut self, elem: T);
+
+    /// Return the x-component of the Jones vector
+    fn x(&self) -> Complex<f64>;
+
+    /// Return the y-component of the Jones vector
+    fn y(&self) -> Complex<f64>;
 }
 
 /// An ideal coherent light source i.e. an ideal laser beam.
@@ -252,6 +258,14 @@ impl JonesVector for Beam {
 
     fn apply_element_mut<T: JonesMatrix>(&mut self, elem: T) {
         self.vec = elem.matrix() * self.vec;
+    }
+
+    fn x(&self) -> Complex<f64> {
+        self.vec.x
+    }
+
+    fn y(&self) -> Complex<f64> {
+        self.vec.y
     }
 }
 
@@ -399,6 +413,13 @@ proptest! {
        assert_approx_eq!(expected_deg, beam.relative_phase_deg());
    }
 
+    #[test]
+    fn test_xy(x in well_behaved_complexes(),
+               y in well_behaved_complexes()) {
+        let beam = Beam::new(x, y);
+        assert_eq!(beam.x(), x);
+        assert_eq!(beam.y(), y);
+    }
 }
 
 // JonesMatrix tests

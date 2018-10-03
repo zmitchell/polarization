@@ -1,7 +1,7 @@
 //! An optical system that encapsulates a beam and the elements that it will pass
 //! through.
 
-use super::common::{Beam, JonesMatrix, JonesVector, JonesError, Result};
+use super::common::{Beam, JonesError, JonesMatrix, JonesVector, Result};
 use super::composite::CompositeElement;
 use super::hwp::HalfWavePlate;
 use super::identity::IdentityElement;
@@ -158,7 +158,7 @@ impl OpticalSystem {
                 beam: self.beam,
                 elements: Some(elems),
             };
-            return system
+            return system;
         }
         let mut elements = self.elements.clone().unwrap();
         elements.extend(elems);

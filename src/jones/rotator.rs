@@ -3,9 +3,7 @@
 //! This optical element may represent a [Faraday rotator](https://en.wikipedia.org/wiki/Faraday_rotator)
 //! for example.
 
-use super::common::{
-    rotate_matrix, Angle, ComplexMatrix, JonesMatrix,
-};
+use super::common::{rotate_matrix, Angle, ComplexMatrix, JonesMatrix};
 use na::Matrix2;
 use num::complex::Complex;
 

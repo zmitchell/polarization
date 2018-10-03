@@ -5,9 +5,7 @@
 use na::Matrix2;
 use num::complex::Complex;
 
-use super::common::{
-    rotate_matrix, Angle, ComplexMatrix, JonesMatrix,
-};
+use super::common::{rotate_matrix, Angle, ComplexMatrix, JonesMatrix};
 
 /// An ideal quarter-wave plate.
 ///
