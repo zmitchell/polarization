@@ -60,7 +60,6 @@ impl JonesMatrix for IdentityElement {
 #[cfg(test)]
 mod test {
     use super::*;
-    #[macro_use]
     use jones::common::{well_behaved_complexes, Beam, JonesVector};
 
     proptest! {

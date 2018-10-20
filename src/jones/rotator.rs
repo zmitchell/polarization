@@ -53,7 +53,6 @@ impl JonesMatrix for PolarizationRotator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[macro_use]
     use jones::common::{Beam, JonesVector};
 
     proptest! {

@@ -209,7 +209,6 @@ impl OpticalSystem {
 #[cfg(test)]
 mod test {
     use super::*;
-    #[macro_use]
     use jones::common::{Angle, well_behaved_complexes};
     use num::complex::Complex;
 
