@@ -10,6 +10,8 @@ use na::Matrix2;
 use num::complex::Complex;
 
 use super::common::{rotate_matrix, Angle, ComplexMatrix, JonesMatrix};
+#[cfg(test)]
+use proptest::prelude::*;
 
 /// An ideal optical retarder that can introduce an arbitrary phase.
 #[derive(Debug, Copy, Clone)]
@@ -63,6 +65,54 @@ impl JonesMatrix for Retarder {
     fn matrix(&self) -> ComplexMatrix {
         self.mat
     }
+}
+
+// The `Angle` supplied to each variant is the value of the other parameter i.e.
+// `RetarderParam::Phase(angle)` would fix the angle of the retarder at `angle` while supplying
+// arbitrary phases.
+#[cfg(test)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum RetarderParam {
+    Phase(Angle),
+    Angle(Angle),
+    All,
+}
+
+#[cfg(test)]
+impl Default for RetarderParam {
+    fn default() -> Self {
+        RetarderParam::All
+    }
+}
+
+#[cfg(test)]
+impl Arbitrary for Retarder {
+    type Parameters = RetarderParam;
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(args: Self::Parameters) -> Self::Strategy {
+        match args {
+            RetarderParam::Phase(angle) => any_retarder_fixed_angle(angle).boxed(),
+            RetarderParam::Angle(phase) => any_retarder_fixed_phase(phase).boxed(),
+            RetarderParam::All => any_retarder().boxed(),
+        }
+        .boxed()
+    }
+}
+
+#[cfg(test)]
+fn any_retarder_fixed_angle(angle: Angle) -> impl Strategy<Value = Retarder> {
+    any::<Angle>().prop_map(move |phase| Retarder::new(angle, phase))
+}
+
+#[cfg(test)]
+fn any_retarder_fixed_phase(phase: Angle) -> impl Strategy<Value = Retarder> {
+    any::<Angle>().prop_map(move |angle| Retarder::new(angle, phase))
+}
+
+#[cfg(test)]
+fn any_retarder() -> impl Strategy<Value = Retarder> {
+    (any::<Angle>(), any::<Angle>()).prop_map(|(angle, phase)| Retarder::new(angle, phase))
 }
 
 #[cfg(test)]

@@ -8,6 +8,8 @@
 use num::complex::Complex;
 
 use super::common::{rotate_matrix, Angle, ComplexMatrix, JonesMatrix};
+#[cfg(test)]
+use proptest::prelude::*;
 
 /// An optical element that simply passes a beam through untouched.
 #[derive(Debug, Copy, Clone)]
@@ -54,6 +56,16 @@ impl JonesMatrix for IdentityElement {
     /// Returns the 2x2 Jones matrix of the element.
     fn matrix(&self) -> ComplexMatrix {
         self.mat
+    }
+}
+
+#[cfg(test)]
+impl Arbitrary for IdentityElement {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+        Just(IdentityElement::new()).boxed()
     }
 }
 

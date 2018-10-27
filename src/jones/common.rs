@@ -23,17 +23,6 @@ pub type ComplexVector = Vector2<Complex<f64>>;
 /// Each error contains an `ErrorKind` to indicate the kind of error encountered.
 pub type Result<T> = result::Result<T, JonesError>;
 
-/// An angle.
-///
-/// Angles or phases are more commonly written in radians in physics, but may be more
-/// convenient to write in degrees. Furthermore, explicitly denoting the units for
-/// angles prevents confusion or mistakes.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Angle {
-    Degrees(f64),
-    Radians(f64),
-}
-
 /// The different kinds of errors that may occur inside `polarization`.
 #[derive(Debug)]
 pub enum JonesError {
@@ -77,26 +66,116 @@ impl fmt::Display for JonesError {
     }
 }
 
-/// The types of polarization handled by Jones calculus.
+/// An angle.
 ///
-/// While more exotic forms of polarization are possible i.e. vector polarizations, the
-/// most common type of polarization are linear, circular, and elliptical. The
-/// `Elliptical` variant allows you to specify an arbitrary polarization.
-#[derive(Debug)]
-pub enum Polarization {
-    Linear(Angle),
-    Circular(Handedness),
-    Elliptical(Complex<f64>, Complex<f64>),
+/// Angles or phases are more commonly written in radians in physics, but may be more
+/// convenient to write in degrees. Furthermore, explicitly denoting the units for
+/// angles prevents confusion or mistakes.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Angle {
+    Degrees(f64),
+    Radians(f64),
+}
+
+#[cfg(test)]
+impl Arbitrary for Angle {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+        prop_oneof![
+            (any::<f64>()).prop_map(|x| Angle::Degrees(x)),
+            (any::<f64>()).prop_map(|x| Angle::Radians(x)),
+        ]
+        .boxed()
+    }
 }
 
 /// The handedness of a circularly polarized beam.
 ///
 /// A circularly polarized beam may either be left- or right-hand circularly polarized,
 /// as determined by the right hand rule.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Handedness {
     Left,
     Right,
+}
+
+#[cfg(test)]
+impl Arbitrary for Handedness {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+        prop_oneof![Just(Handedness::Left), Just(Handedness::Right),].boxed()
+    }
+}
+
+/// The types of polarization handled by Jones calculus.
+///
+/// While more exotic forms of polarization are possible i.e. vector polarizations, the
+/// most common type of polarization are linear, circular, and elliptical. The
+/// `Elliptical` variant allows you to specify an arbitrary polarization.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Polarization {
+    Linear(Angle),
+    Circular(Handedness),
+    Elliptical(Complex<f64>, Complex<f64>),
+}
+
+#[cfg(test)]
+pub fn any_linear_polarization() -> impl Strategy<Value = Polarization> {
+    any::<Angle>().prop_map(|angle| Polarization::Linear(angle))
+}
+
+#[cfg(test)]
+pub fn any_circular_polarization() -> impl Strategy<Value = Polarization> {
+    any::<Handedness>().prop_map(|h| Polarization::Circular(h))
+}
+
+#[cfg(test)]
+pub fn any_elliptical_polarization() -> impl Strategy<Value = Polarization> {
+    (any::<f64>(), any::<f64>(), any::<f64>(), any::<f64>()).prop_map(|(xr, xi, yr, yi)| {
+        let x = Complex::new(xr, xi);
+        let y = Complex::new(yr, yi);
+        Polarization::Elliptical(x, y)
+    })
+}
+
+#[cfg(test)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum PolarizationKind {
+    Linear,
+    Circular,
+    Elliptical,
+    Any,
+}
+
+#[cfg(test)]
+impl Default for PolarizationKind {
+    fn default() -> Self {
+        PolarizationKind::Any
+    }
+}
+
+#[cfg(test)]
+impl Arbitrary for Polarization {
+    type Parameters = PolarizationKind;
+    type Strategy = BoxedStrategy<Polarization>;
+
+    fn arbitrary_with(args: Self::Parameters) -> Self::Strategy {
+        match args {
+            PolarizationKind::Linear => any_linear_polarization().boxed(),
+            PolarizationKind::Circular => any_circular_polarization().boxed(),
+            PolarizationKind::Elliptical => any_elliptical_polarization().boxed(),
+            PolarizationKind::Any => prop_oneof![
+                any_linear_polarization(),
+                any_circular_polarization(),
+                any_elliptical_polarization(),
+            ]
+            .boxed(),
+        }
+    }
 }
 
 pub trait JonesVector {
@@ -144,7 +223,7 @@ pub trait JonesVector {
 }
 
 /// An ideal coherent light source i.e. an ideal laser beam.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Beam {
     vec: ComplexVector,
 }
@@ -269,6 +348,41 @@ impl JonesVector for Beam {
     }
 }
 
+#[cfg(test)]
+impl Arbitrary for Beam {
+    type Parameters = PolarizationKind;
+    type Strategy = BoxedStrategy<Beam>;
+
+    fn arbitrary_with(args: Self::Parameters) -> Self::Strategy {
+        match args {
+            PolarizationKind::Linear => any_linear_beam().boxed(),
+            PolarizationKind::Circular => any_circular_beam().boxed(),
+            PolarizationKind::Elliptical => any_elliptical_beam().boxed(),
+            PolarizationKind::Any => prop_oneof![
+                any_linear_beam(),
+                any_circular_beam(),
+                any_elliptical_beam(),
+            ]
+            .boxed(),
+        }
+    }
+}
+
+#[cfg(test)]
+pub fn any_linear_beam() -> impl Strategy<Value = Beam> {
+    any::<Angle>().prop_map(|angle| Beam::linear(angle))
+}
+
+#[cfg(test)]
+pub fn any_circular_beam() -> impl Strategy<Value = Beam> {
+    any::<Handedness>().prop_map(|h| Beam::circular(h))
+}
+
+#[cfg(test)]
+pub fn any_elliptical_beam() -> impl Strategy<Value = Beam> {
+    (any_complex(), any_complex()).prop_map(|(x, y)| Beam::new(x, y))
+}
+
 pub trait JonesMatrix {
     /// Return the optical element rotated by the given angle.
     fn rotated(&self, angle: Angle) -> Self;
@@ -299,6 +413,98 @@ pub fn rotate_matrix(mat: &ComplexMatrix, angle: &Angle) -> ComplexMatrix {
         Complex::new(rad.cos(), 0_f64),
     );
     rot_mat_inv * mat * rot_mat
+}
+
+#[cfg(test)]
+pub fn any_complex() -> impl Strategy<Value = Complex<f64>> {
+    (any::<f64>(), any::<f64>())
+        .prop_map(|(x, y)| Complex::new(x, y))
+        .boxed()
+}
+
+#[cfg(test)]
+pub fn float_is_well_behaved(x: f64) -> bool {
+    let not_nan = !x.is_nan();
+    let not_too_small = x > -1e12;
+    let not_too_big = x < 1e12;
+    return not_nan && not_too_small && not_too_big;
+}
+
+#[cfg(test)]
+pub fn arbitrary_complex() -> BoxedStrategy<Complex<f64>> {
+    (any::<f64>(), any::<f64>())
+        .prop_filter(
+            "floats must be in the range [-1e12,1e12] and not NaN",
+            |(x, y)| float_is_well_behaved(*x) && float_is_well_behaved(*y),
+        )
+        .prop_map(|(x, y)| Complex::new(x, y))
+        .boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_angle() -> BoxedStrategy<Angle> {
+    prop_oneof![
+        any::<f64>().prop_map(|x| Angle::Degrees(x)),
+        any::<f64>().prop_map(|x| Angle::Degrees(x)),
+    ]
+    .boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_handedness() -> BoxedStrategy<Handedness> {
+    prop_oneof![Just(Handedness::Left), Just(Handedness::Right),].boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_linear_polarization() -> BoxedStrategy<Polarization> {
+    arbitrary_angle()
+        .prop_map(|angle| Polarization::Linear(angle))
+        .boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_circular_polarization() -> BoxedStrategy<Polarization> {
+    arbitrary_handedness()
+        .prop_map(|h| Polarization::Circular(h))
+        .boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_elliptical_polarization() -> BoxedStrategy<Polarization> {
+    (arbitrary_complex(), arbitrary_complex())
+        .prop_map(|(x, y)| Polarization::Elliptical(x, y))
+        .boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_polarization() -> BoxedStrategy<Polarization> {
+    prop_oneof![
+        arbitrary_linear_polarization(),
+        arbitrary_circular_polarization(),
+        arbitrary_elliptical_polarization(),
+    ]
+    .boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_linear_beam() -> BoxedStrategy<Beam> {
+    (arbitrary_angle())
+        .prop_map(|angle| Beam::linear(angle))
+        .boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_circular_beam() -> BoxedStrategy<Beam> {
+    (arbitrary_handedness())
+        .prop_map(|h| Beam::circular(h))
+        .boxed()
+}
+
+#[cfg(test)]
+pub fn arbitrary_beam() -> BoxedStrategy<Beam> {
+    (arbitrary_complex(), arbitrary_complex())
+        .prop_map(|(x, y)| Beam::new(x, y))
+        .boxed()
 }
 
 #[cfg(test)]
@@ -352,27 +558,25 @@ macro_rules! assert_matrix_approx_eq {
 #[cfg(test)]
 proptest! {
    #[test]
-   fn test_intensity_one_real_component(n in well_behaved_doubles()) {
+   fn test_intensity_one_real_component(n: f64) {
        let beam = Beam::new(
            Complex::new(n, 0_f64),
            Complex::new(0_f64, 0_f64),
        );
+       let intensity = beam.intensity();
+       prop_assume!(intensity.is_ok());
+       assert_approx_eq!(n.powi(2), intensity.unwrap());
+   }
+
+   #[test]
+   fn test_intensity_is_never_negative(beam: Beam) {
+       prop_assume!(beam.intensity().is_ok());
        let intensity = beam.intensity().unwrap();
-       assert_approx_eq!(n.powi(2), intensity);
+       prop_assert!(intensity >= 0.0);
    }
 
    #[test]
-   fn test_intensity_is_never_negative(x in well_behaved_complexes(),
-                                       y in well_behaved_complexes()) {
-       let v = Beam::new(x, y);
-       prop_assume!(v.intensity().is_ok());
-       let intensity = v.intensity().unwrap();
-       assert!(intensity >= 0.0);
-   }
-
-   #[test]
-   fn test_intensity_mag_with_complex(x in well_behaved_complexes(),
-                                      y in well_behaved_complexes()) {
+   fn test_intensity_mag_with_complex(x in any_complex(), y in any_complex()) {
        let xr = x.re;
        let xi = x.im;
        let yr = y.re;
@@ -384,8 +588,9 @@ proptest! {
    }
 
    #[test]
-   fn test_common_phase(x in well_behaved_complexes(),
-                        y in well_behaved_complexes()) {
+   fn test_common_phase(x in any_complex(), y in any_complex()) {
+       prop_assume!(x.norm().abs() < 100.0);
+       prop_assume!(y.norm().abs() < 100.0);
        let y_phase_new = y.arg() - x.arg();
        let beam = Beam::new(x, y);
        let new_beam = beam.remove_common_phase();
@@ -394,8 +599,7 @@ proptest! {
    }
 
    #[test]
-   fn test_common_phase_mut(x in well_behaved_complexes(),
-                            y in well_behaved_complexes()) {
+   fn test_common_phase_mut(x in any_complex(), y in any_complex()) {
        let y_phase_new = y.arg() - x.arg();
        let mut beam = Beam::new(x, y);
        beam.remove_common_phase_mut();
@@ -404,8 +608,7 @@ proptest! {
    }
 
    #[test]
-   fn test_relative_phase(x in well_behaved_complexes(),
-                          y in well_behaved_complexes()) {
+   fn test_relative_phase(x in any_complex(), y in any_complex()) {
        let expected_rad = y.arg() - x.arg();
        let expected_deg = expected_rad.to_degrees();
        let beam = Beam::new(x, y);
@@ -414,34 +617,28 @@ proptest! {
    }
 
     #[test]
-    fn test_xy(x in well_behaved_complexes(),
-               y in well_behaved_complexes()) {
+    fn test_construct_beam_from_xy(x in any_complex(), y in any_complex()) {
         let beam = Beam::new(x, y);
         assert_eq!(beam.x(), x);
         assert_eq!(beam.y(), y);
     }
-}
 
-// JonesMatrix tests
-#[cfg(test)]
-proptest! {
-
-   #[test]
-   fn test_rotate_360_degrees_returns_original(m00 in well_behaved_complexes(),
-                                               m01 in well_behaved_complexes(),
-                                               m10 in well_behaved_complexes(),
-                                               m11 in well_behaved_complexes()) {
-       let mat = Matrix2::new(m00, m01, m10, m11);
-       let angle = Angle::Degrees(360_f64);
-       let rotated = rotate_matrix(&mat, &angle);
-       assert_matrix_approx_eq!(mat, rotated);
-   }
+    #[test]
+    fn test_rotate_360_degrees_returns_original(m00 in any_complex(),
+                                                m01 in any_complex(),
+                                                m10 in any_complex(),
+                                                m11 in any_complex()) {
+        let mat = Matrix2::new(m00, m01, m10, m11);
+        let angle = Angle::Degrees(360_f64);
+        let rotated = rotate_matrix(&mat, &angle);
+        assert_matrix_approx_eq!(mat, rotated);
+    }
 
    #[test]
-   fn test_rotate_2pi_rad_returns_original(m00 in well_behaved_complexes(),
-                                           m01 in well_behaved_complexes(),
-                                           m10 in well_behaved_complexes(),
-                                           m11 in well_behaved_complexes()) {
+   fn test_rotate_2pi_rad_returns_original(m00 in any_complex(),
+                                           m01 in any_complex(),
+                                           m10 in any_complex(),
+                                           m11 in any_complex()) {
        let mat = Matrix2::new(m00, m01, m10, m11);
        let angle = Angle::Radians(2.0 * pi);
        let rotated = rotate_matrix(&mat, &angle);
@@ -449,10 +646,10 @@ proptest! {
    }
 
    #[test]
-   fn test_rotate_0_degrees_returns_original(m00 in well_behaved_complexes(),
-                                             m01 in well_behaved_complexes(),
-                                             m10 in well_behaved_complexes(),
-                                             m11 in well_behaved_complexes()) {
+   fn test_rotate_0_degrees_returns_original(m00 in any_complex(),
+                                             m01 in any_complex(),
+                                             m10 in any_complex(),
+                                             m11 in any_complex()) {
        let mat = Matrix2::new(m00, m01, m10, m11);
        let angle = Angle::Degrees(0_f64);
        let rotated = rotate_matrix(&mat, &angle);
@@ -460,10 +657,10 @@ proptest! {
    }
 
    #[test]
-   fn test_rotate_0_rad_returns_original(m00 in well_behaved_complexes(),
-                                         m01 in well_behaved_complexes(),
-                                         m10 in well_behaved_complexes(),
-                                         m11 in well_behaved_complexes()) {
+   fn test_rotate_0_rad_returns_original(m00 in any_complex(),
+                                         m01 in any_complex(),
+                                         m10 in any_complex(),
+                                         m11 in any_complex()) {
        let mat = Matrix2::new(m00, m01, m10, m11);
        let angle = Angle::Radians(0_f64);
        let rotated = rotate_matrix(&mat, &angle);

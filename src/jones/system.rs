@@ -9,6 +9,10 @@ use super::polarizer::Polarizer;
 use super::qwp::QuarterWavePlate;
 use super::retarder::Retarder;
 use super::rotator::PolarizationRotator;
+#[cfg(test)]
+use proptest::option;
+#[cfg(test)]
+use proptest::prelude::*;
 
 /// A type that represents the various optical elements that may appear in the
 /// optical system.
@@ -28,6 +32,69 @@ pub enum OpticalElement {
     Identity(IdentityElement),
     /// An element that represents the composition of several other elements.
     Composite(CompositeElement),
+}
+
+#[cfg(test)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum OpticalElementType {
+    Polarizer,
+    PolarizationRotator,
+    Retarder,
+    QuarterWavePlate,
+    HalfWavePlate,
+    Identity,
+    Composite,
+    Any,
+}
+
+#[cfg(test)]
+impl Default for OpticalElementType {
+    fn default() -> Self {
+        OpticalElementType::Any
+    }
+}
+
+#[cfg(test)]
+impl Arbitrary for OpticalElement {
+    type Parameters = OpticalElementType;
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(args: Self::Parameters) -> Self::Strategy {
+        match args {
+            OpticalElementType::Polarizer => any::<Polarizer>()
+                .prop_map(|x| OpticalElement::Polarizer(x))
+                .boxed(),
+            OpticalElementType::PolarizationRotator => any::<PolarizationRotator>()
+                .prop_map(|x| OpticalElement::PolarizationRotator(x))
+                .boxed(),
+            OpticalElementType::Retarder => any::<Retarder>()
+                .prop_map(|x| OpticalElement::Retarder(x))
+                .boxed(),
+            OpticalElementType::QuarterWavePlate => any::<QuarterWavePlate>()
+                .prop_map(|x| OpticalElement::QuarterWavePlate(x))
+                .boxed(),
+            OpticalElementType::HalfWavePlate => any::<HalfWavePlate>()
+                .prop_map(|x| OpticalElement::HalfWavePlate(x))
+                .boxed(),
+            OpticalElementType::Identity => any::<IdentityElement>()
+                .prop_map(|x| OpticalElement::Identity(x))
+                .boxed(),
+            OpticalElementType::Composite => any::<CompositeElement>()
+                .prop_map(|x| OpticalElement::Composite(x))
+                .boxed(),
+            OpticalElementType::Any => prop_oneof![
+                any::<Polarizer>().prop_map(|x| OpticalElement::Polarizer(x)),
+                any::<PolarizationRotator>().prop_map(|x| OpticalElement::PolarizationRotator(x)),
+                any::<Retarder>().prop_map(|x| OpticalElement::Retarder(x)),
+                any::<QuarterWavePlate>().prop_map(|x| OpticalElement::QuarterWavePlate(x)),
+                any::<HalfWavePlate>().prop_map(|x| OpticalElement::HalfWavePlate(x)),
+                any::<IdentityElement>().prop_map(|x| OpticalElement::Identity(x)),
+                any::<CompositeElement>().prop_map(|x| OpticalElement::Composite(x)),
+            ]
+            .boxed(),
+        }
+        .boxed()
+    }
 }
 
 /// A type that contains a beam and the elements that it will pass through.
@@ -207,9 +274,24 @@ impl OpticalSystem {
 }
 
 #[cfg(test)]
+impl Arbitrary for OpticalSystem {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+        (
+            option::of(any::<Beam>()),
+            option::of(any::<Vec<OpticalElement>>()),
+        )
+            .prop_map(|(beam, elements)| OpticalSystem { beam, elements })
+            .boxed()
+    }
+}
+
+#[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{Angle, well_behaved_complexes};
+    use jones::common::{well_behaved_complexes, Angle};
     use num::complex::Complex;
 
     #[test]

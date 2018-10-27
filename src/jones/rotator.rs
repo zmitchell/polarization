@@ -6,6 +6,8 @@
 use super::common::{rotate_matrix, Angle, ComplexMatrix, JonesMatrix};
 use na::Matrix2;
 use num::complex::Complex;
+#[cfg(test)]
+use proptest::prelude::*;
 
 /// An optical element that rotates the polarization of a beam.
 ///
@@ -47,6 +49,18 @@ impl JonesMatrix for PolarizationRotator {
     /// Returns the 2x2 Jones matrix of the element.
     fn matrix(&self) -> ComplexMatrix {
         self.mat
+    }
+}
+
+#[cfg(test)]
+impl Arbitrary for PolarizationRotator {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+        any::<Angle>()
+            .prop_map(|angle| PolarizationRotator::new(angle))
+            .boxed()
     }
 }
 

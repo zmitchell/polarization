@@ -5,7 +5,13 @@
 //! represents the result of composing several elements together, and, as a result, may
 //! only be constructed from an existing `ComplexMatrix`.
 
+#[cfg(test)]
+use super::common::any_complex;
 use super::common::{rotate_matrix, Angle, ComplexMatrix, JonesMatrix};
+#[cfg(test)]
+use na::Matrix2;
+#[cfg(test)]
+use proptest::prelude::*;
 
 /// An optical element that represents the composition of several other elements.
 ///
@@ -42,5 +48,20 @@ impl JonesMatrix for CompositeElement {
     /// Returns the 2x2 Jones matrix of the element.
     fn matrix(&self) -> ComplexMatrix {
         self.mat
+    }
+}
+
+#[cfg(test)]
+impl Arbitrary for CompositeElement {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<CompositeElement>;
+
+    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+        (any_complex(), any_complex(), any_complex(), any_complex())
+            .prop_map(|(m00, m01, m10, m11)| {
+                let mat = Matrix2::new(m00, m01, m10, m11);
+                CompositeElement { mat }
+            })
+            .boxed()
     }
 }
