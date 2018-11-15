@@ -72,12 +72,12 @@ impl Arbitrary for IdentityElement {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{well_behaved_complexes, Beam, JonesVector};
+    use jones::common::{any_complex, Beam, JonesVector};
 
     proptest! {
         #[test]
-        fn test_identity_element_returns_beam(x in well_behaved_complexes(),
-                                              y in well_behaved_complexes()) {
+        fn test_identity_element_returns_beam(x in any_complex(),
+                                              y in any_complex()) {
             let beam = Beam::new(x, y);
             let ident = IdentityElement::new();
             let beam_after = beam.apply_element(ident);

@@ -291,7 +291,7 @@ impl Arbitrary for OpticalSystem {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{well_behaved_complexes, Angle};
+    use jones::common::{any_complex, Angle};
     use num::complex::Complex;
 
     #[test]
@@ -317,8 +317,7 @@ mod test {
 
     proptest!{
         #[test]
-        fn test_beam_passes_through(x in well_behaved_complexes(),
-                                    y in well_behaved_complexes(),) {
+        fn test_beam_passes_through(x in any_complex(), y in any_complex(),) {
             let beam = Beam::new(x, y);
             let ident = IdentityElement::new();
             let element = OpticalElement::Identity(ident);

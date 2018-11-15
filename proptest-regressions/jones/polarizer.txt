@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+xs 1083430325 2316618476 848721277 2948154297 # shrinks to x = Complex { re: 0.0, im: -0.0 }, y = Complex { re: -20955854655373716000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0, im: 0.0 }, theta = 59.03613487484748

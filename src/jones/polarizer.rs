@@ -63,7 +63,7 @@ impl Arbitrary for Polarizer {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{well_behaved_complexes, Beam, JonesVector};
+    use jones::common::{any_complex, Beam, JonesVector};
 
     #[test]
     fn test_horizontal_polarizer() {
@@ -100,9 +100,7 @@ mod test {
        }
 
        #[test]
-       fn test_crossed_polarizers(x in well_behaved_complexes(),
-                                  y in well_behaved_complexes(),
-                                  theta in 0_f64..90_f64) {
+       fn test_crossed_polarizers(x in any_complex(), y in any_complex(), theta in 0_f64..90_f64) {
            let beam = Beam::new(x, y);
            let first_pol = Polarizer::new(Angle::Degrees(theta));
            let second_pol = Polarizer::new(Angle::Degrees(theta + 90.0));
