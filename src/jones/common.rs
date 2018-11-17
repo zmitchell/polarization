@@ -460,6 +460,11 @@ pub fn nice_f64() -> impl Strategy<Value = f64> {
 }
 
 #[cfg(test)]
+pub fn float_angle() -> impl Strategy<Value = f64> {
+    (0_f64..180_f64).boxed()
+}
+
+#[cfg(test)]
 pub fn float_is_well_behaved(x: f64) -> bool {
     let not_nan = !x.is_nan();
     let not_too_small = x > -1e12;

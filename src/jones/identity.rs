@@ -72,24 +72,32 @@ impl Arbitrary for IdentityElement {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{any_complex, Beam, JonesVector};
+    use jones::common::{float_angle, Beam, JonesVector};
 
     proptest! {
         #[test]
-        fn test_identity_element_returns_beam(x in any_complex(),
-                                              y in any_complex()) {
-            let beam = Beam::new(x, y);
+        fn test_identity_element_returns_same_beam(beam: Beam) {
             let ident = IdentityElement::new();
             let beam_after = beam.apply_element(ident);
-            assert_beam_approx_eq!(beam_after, beam);
+            prop_assert_beam_approx_eq!(beam_after, beam);
         }
 
         #[test]
-        fn test_identity_preserved_under_rotation(theta in 0_f64..90_f64) {
+        fn test_multiple_identity_elements_preserves_beam(beam: Beam, elems: Vec<IdentityElement>) {
+            let mut beam_after = beam.clone();
+            for elem in elems {
+                beam_after = beam_after.apply_element(elem);
+            }
+            prop_assert_beam_approx_eq!(beam_after, beam);
+        }
+
+        #[test]
+        fn test_identity_preserved_under_rotation(theta in float_angle()) {
             let beam = Beam::linear(Angle::Degrees(theta));
             let ident = IdentityElement::new().rotated(Angle::Degrees(theta));
             let beam_after = beam.apply_element(ident);
-            assert_beam_approx_eq!(beam_after, beam);
+            prop_assert_beam_approx_eq!(beam_after, beam);
         }
+
     }
 }
