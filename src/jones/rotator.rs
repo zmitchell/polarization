@@ -71,12 +71,26 @@ mod tests {
 
     proptest! {
         #[test]
-        fn test_polarization_rotator_rotates(theta in 0 as f64..360 as f64) {
+        fn test_polarization_rotator_rotates(theta in 0_f64..360_f64) {
            let beam = Beam::linear(Angle::Degrees(0.0));
            let expected_beam = Beam::linear(Angle::Degrees(theta));
            let rotator = PolarizationRotator::new(Angle::Degrees(theta));
            let beam_after = beam.apply_element(rotator);
-           assert_beam_approx_eq!(beam_after, expected_beam);
+           prop_assert_beam_approx_eq!(beam_after, expected_beam);
+        }
+
+        #[test]
+        fn test_polarization_rotator_preserves_beam_with_0_degree_rotation(beam: Beam) {
+            let rotator = PolarizationRotator::new(Angle::Degrees(0.0));
+            let beam_after = beam.apply_element(rotator);
+            prop_assert_beam_approx_eq!(beam_after, beam);
+        }
+
+        #[test]
+        fn test_polarization_rotator_preserves_beam_with_360_degree_rotation(beam: Beam) {
+            let rotator = PolarizationRotator::new(Angle::Degrees(360.0));
+            let beam_after = beam.apply_element(rotator);
+            prop_assert_beam_approx_eq!(beam_after, beam);
         }
     }
 }
