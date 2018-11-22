@@ -94,13 +94,23 @@ mod test {
     }
 
     proptest!{
-       #[test]
-       fn test_hwp_reflects_polarization(theta in 0_f64..90_f64) {
-           let beam = Beam::linear(Angle::Degrees(theta));
-           let expected_beam = Beam::linear(Angle::Degrees(-theta));
-           let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
-           let beam_after = beam.apply_element(hwp);
-           assert_beam_approx_eq!(beam_after, expected_beam);
-       }
+        #[test]
+        fn test_hwp_reflects_polarization(theta in 0_f64..90_f64) {
+            let beam = Beam::linear(Angle::Degrees(theta));
+            let expected_beam = Beam::linear(Angle::Degrees(-theta));
+            let hwp = HalfWavePlate::new(Angle::Degrees(0.0));
+            let beam_after = beam.apply_element(hwp);
+            prop_assert_beam_approx_eq!(beam_after, expected_beam);
+        }
+
+        #[test]
+        fn test_hwp_preserves_intensity(hwp: HalfWavePlate, beam: Beam) {
+            let intensity_before = beam.intensity();
+            prop_assume!(intensity_before.is_ok());
+            let beam_after = beam.apply_element(hwp);
+            let intensity_after = beam_after.intensity();
+            prop_assume!(intensity_after.is_ok());
+            prop_assert_approx_eq!(intensity_after.unwrap(), intensity_before.unwrap());
+        }
     }
 }
