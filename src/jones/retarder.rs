@@ -122,37 +122,42 @@ mod tests {
 
     proptest! {
         #[test]
-        fn test_retarder_transparent_with_phase_zero(theta1 in 0_f64..360_f64,
-                                                     theta2 in 0_f64..360_f64,) {
-            let beam = Beam::linear(Angle::Degrees(theta1));
-            let retarder = Retarder::new(Angle::Degrees(theta2), Angle::Degrees(0.0));
-            let beam_after = beam.apply_element(retarder);
-            assert_beam_approx_eq!(beam_after, beam);
+        fn test_retarder_transparent_with_phase_zero(beam: Beam, angle: Angle) {
+            let ret = Retarder::new(angle, Angle::Degrees(0.0));
+            let beam_after = beam.apply_element(ret);
+            prop_assert_beam_approx_eq!(beam_after, beam);
         }
 
         #[test]
-        fn test_retarder_transparent_with_phase_2pi(theta1 in 0_f64..360_f64,
-                                                    theta2 in 0_f64..360_f64,) {
-            let beam = Beam::linear(Angle::Degrees(theta1));
-            let retarder = Retarder::new(Angle::Degrees(theta2), Angle::Degrees(360.0));
-            let beam_after = beam.apply_element(retarder);
-            assert_beam_approx_eq!(beam_after, beam);
+        fn test_retarder_transparent_with_phase_2pi(beam: Beam, angle: Angle) {
+            let ret = Retarder::new(angle, Angle::Degrees(360.0));
+            let beam_after = beam.apply_element(ret);
+            prop_assert_beam_approx_eq!(beam_after, beam);
         }
 
         #[test]
-        fn test_retarder_reduces_to_qwp(theta in 0_f64..360_f64) {
+        fn test_retarder_reduces_to_qwp(angle: Angle) {
             use jones::qwp::QuarterWavePlate;
-            let qwp = QuarterWavePlate::new(Angle::Degrees(theta));
-            let retarder = Retarder::new(Angle::Degrees(theta), Angle::Degrees(90.0));
-            assert_matrix_approx_eq!(qwp.matrix(), retarder.matrix());
+            let qwp = QuarterWavePlate::new(angle);
+            let retarder = Retarder::new(angle, Angle::Degrees(90.0));
+            prop_assert_matrix_approx_eq!(qwp.matrix(), retarder.matrix());
         }
 
         #[test]
-        fn test_retarder_reduces_to_hwp(theta in 0_f64..360_f64) {
+        fn test_retarder_reduces_to_hwp(angle: Angle) {
             use jones::hwp::HalfWavePlate;
-            let hwp = HalfWavePlate::new(Angle::Degrees(theta));
-            let retarder = Retarder::new(Angle::Degrees(theta), Angle::Degrees(180.0));
-            assert_matrix_approx_eq!(hwp.matrix(), retarder.matrix());
+            let hwp = HalfWavePlate::new(angle);
+            let retarder = Retarder::new(angle, Angle::Degrees(180.0));
+            prop_assert_matrix_approx_eq!(hwp.matrix(), retarder.matrix());
+        }
+
+        #[test]
+        fn test_retarder_preserves_intensity(beam: Beam, ret: Retarder) {
+            let intensity_before = beam.intensity();
+            prop_assume!(intensity_before.is_ok());
+            let intensity_after = beam.apply_element(ret).intensity();
+            prop_assume!(intensity_after.is_ok());
+            prop_assert_approx_eq!(intensity_after.unwrap(), intensity_before.unwrap());
         }
     }
 }
