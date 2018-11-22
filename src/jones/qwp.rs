@@ -112,4 +112,15 @@ mod test {
         let expected_beam = Beam::new(prefactor, -prefactor * Complex::<f64>::i());
         assert_beam_approx_eq!(beam_after, expected_beam);
     }
+
+    proptest! {
+        #[test]
+        fn test_qwp_preserves_intensity(qwp: QuarterWavePlate, beam: Beam) {
+            let intensity_before = beam.intensity();
+            prop_assume!(intensity_before.is_ok());
+            let intensity_after = beam.apply_element(qwp).intensity();
+            prop_assume!(intensity_after.is_ok());
+            prop_assert_approx_eq!(intensity_after.unwrap(), intensity_before.unwrap());
+        }
+    }
 }
