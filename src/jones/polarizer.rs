@@ -107,5 +107,21 @@ mod test {
            let beam_after = beam.apply_element(first_pol).apply_element(second_pol);
            assert_approx_eq!(beam_after.intensity().unwrap(), 0.0);
        }
+
+       #[test]
+       fn test_horizontal_polarizer_zeroes_y_phase(beam: Beam) {
+            let pol = Polarizer::new(Angle::Degrees(0.0));
+            let beam_after = beam.apply_element(pol).remove_common_phase();
+            let y_phase = beam_after.y().arg();
+            prop_assert!(y_phase.abs() < 1e-6);
+       }
+
+       #[test]
+       fn test_vertical_polarizer_zeroes_x_phase(beam: Beam) {
+            let pol = Polarizer::new(Angle::Degrees(90.0));
+            let beam_after = beam.apply_element(pol).remove_common_phase();
+            let x_phase = beam_after.x().arg();
+            prop_assert!(x_phase.abs() < 1e-6);
+       }
     }
 }

@@ -5,3 +5,5 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 xs 1083430325 2316618476 848721277 2948154297 # shrinks to x = Complex { re: 0.0, im: -0.0 }, y = Complex { re: -20955854655373716000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0, im: 0.0 }, theta = 59.03613487484748
+xs 3305171252 3560031808 617961932 1786034049 # shrinks to beam = Beam { vec: Matrix { data: [Complex { re: -18.447203254432836, im: 0.0 }, Complex { re: 0.0, im: -0.0 }] } }
+xs 3397637438 3317100211 2396225020 1542690591 # shrinks to beam = Beam { vec: Matrix { data: [Complex { re: -0.0, im: 0.0 }, Complex { re: -0.0, im: 0.0 }] } }
