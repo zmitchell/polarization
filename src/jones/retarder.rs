@@ -139,6 +139,10 @@ mod tests {
         fn test_retarder_reduces_to_qwp(angle: Angle) {
             use jones::qwp::QuarterWavePlate;
             let qwp = QuarterWavePlate::new(angle);
+            prop_assume!(!qwp.matrix()[(0,0)].is_nan());
+            prop_assume!(!qwp.matrix()[(0,1)].is_nan());
+            prop_assume!(!qwp.matrix()[(1,0)].is_nan());
+            prop_assume!(!qwp.matrix()[(1,1)].is_nan());
             let retarder = Retarder::new(angle, Angle::Degrees(90.0));
             prop_assert_matrix_approx_eq!(qwp.matrix(), retarder.matrix());
         }
@@ -147,6 +151,10 @@ mod tests {
         fn test_retarder_reduces_to_hwp(angle: Angle) {
             use jones::hwp::HalfWavePlate;
             let hwp = HalfWavePlate::new(angle);
+            prop_assume!(!hwp.matrix()[(0,0)].is_nan());
+            prop_assume!(!hwp.matrix()[(0,1)].is_nan());
+            prop_assume!(!hwp.matrix()[(1,0)].is_nan());
+            prop_assume!(!hwp.matrix()[(1,1)].is_nan());
             let retarder = Retarder::new(angle, Angle::Degrees(180.0));
             prop_assert_matrix_approx_eq!(hwp.matrix(), retarder.matrix());
         }
