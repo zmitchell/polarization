@@ -254,6 +254,18 @@ impl OpticalSystem {
     /// the system.
     pub fn propagate(&self) -> Result<Beam> {
         // Bring the variant names into scope just for convenience.
+        if self.elements.is_none() {
+            return Err(JonesError::NoElements);
+        }
+        if self.beam.is_none() {
+            return Err(JonesError::NoBeam);
+        }
+        let composite = self.composed_elements().unwrap();
+        Ok(self.beam.clone().unwrap().apply_element(composite))
+    }
+
+    pub fn composed_elements(&self) -> Result<CompositeElement> {
+        // Bring the variant names into scope just for convenience.
         use self::OpticalElement::*;
         if self.elements.is_none() {
             return Err(JonesError::NoElements);
@@ -280,10 +292,10 @@ impl OpticalSystem {
                         Identity(id) => id.matrix(),
                         Composite(comp) => comp.matrix(),
                     };
-                    mat * acc
+                    let new = mat * acc;
+                    new
                 });
-        let composite = CompositeElement::from_matrix(composite_mat);
-        Ok(self.beam.clone().unwrap().apply_element(composite))
+        Ok(CompositeElement::from_matrix(composite_mat))
     }
 }
 
