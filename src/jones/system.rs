@@ -1,7 +1,7 @@
 //! An optical system that encapsulates a beam and the elements that it will pass
 //! through.
 
-use super::common::{Beam, JonesError, JonesMatrix, JonesVector, Result};
+use super::common::{Beam, ComplexMatrix, JonesError, JonesMatrix, JonesVector, Result};
 use super::composite::CompositeElement;
 use super::hwp::HalfWavePlate;
 use super::identity::IdentityElement;
@@ -32,6 +32,20 @@ pub enum OpticalElement {
     Identity(IdentityElement),
     /// An element that represents the composition of several other elements.
     Composite(CompositeElement),
+}
+
+impl OpticalElement {
+    pub fn matrix(&self) -> ComplexMatrix {
+        match self {
+            OpticalElement::Polarizer(pol) => pol.matrix(),
+            OpticalElement::PolarizationRotator(rot) => rot.matrix(),
+            OpticalElement::Retarder(ret) => ret.matrix(),
+            OpticalElement::QuarterWavePlate(qwp) => qwp.matrix(),
+            OpticalElement::HalfWavePlate(hwp) => hwp.matrix(),
+            OpticalElement::Identity(id) => id.matrix(),
+            OpticalElement::Composite(comp) => comp.matrix(),
+        }
+    }
 }
 
 #[cfg(test)]
