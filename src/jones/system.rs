@@ -97,12 +97,12 @@ impl Arbitrary for OpticalElement {
                 .prop_map(|x| OpticalElement::Composite(x))
                 .boxed(),
             OpticalElementType::Any => prop_oneof![
+                any::<IdentityElement>().prop_map(|x| OpticalElement::Identity(x)),
                 any::<Polarizer>().prop_map(|x| OpticalElement::Polarizer(x)),
                 any::<PolarizationRotator>().prop_map(|x| OpticalElement::PolarizationRotator(x)),
-                any::<Retarder>().prop_map(|x| OpticalElement::Retarder(x)),
                 any::<QuarterWavePlate>().prop_map(|x| OpticalElement::QuarterWavePlate(x)),
                 any::<HalfWavePlate>().prop_map(|x| OpticalElement::HalfWavePlate(x)),
-                any::<IdentityElement>().prop_map(|x| OpticalElement::Identity(x)),
+                any::<Retarder>().prop_map(|x| OpticalElement::Retarder(x)),
                 any::<CompositeElement>().prop_map(|x| OpticalElement::Composite(x)),
             ]
             .boxed(),
