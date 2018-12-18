@@ -355,5 +355,80 @@ mod test {
             assert_beam_approx_eq!(beam_after.unwrap(), beam);
         }
 
+        #[test]
+        fn test_single_composed_element_is_returned_untouched(beam: Beam, elem: OpticalElement) {
+            let system = OpticalSystem::new()
+                .with_beam(beam)
+                .with_element(elem.clone());
+            let composed = system.composed_elements().unwrap().matrix();
+            let original = elem.matrix();
+            prop_assert_matrix_approx_eq!(composed, original);
+        }
+
+        #[test]
+        fn test_composed_identity_looks_like_identity(beam: Beam) {
+            let ident = IdentityElement::new();
+            let system = OpticalSystem::new()
+                .with_beam(beam)
+                .with_element(OpticalElement::Identity(ident.clone()))
+                .with_element(OpticalElement::Identity(ident.clone()))
+                .with_element(OpticalElement::Identity(ident.clone()));
+            let composed = system.composed_elements().unwrap().matrix();
+            prop_assert_matrix_approx_eq!(composed, ident.matrix());
+        }
+
+        #[test]
+        fn test_mat_composed_with_identity_is_untouched(beam: Beam, elem: CompositeElement) {
+            let ident = IdentityElement::new();
+            let system = OpticalSystem::new()
+                .with_beam(beam)
+                .with_element(OpticalElement::Identity(ident))
+                .with_element(OpticalElement::Composite(elem.clone()));
+            let composed = system.composed_elements().unwrap().matrix();
+            prop_assert_matrix_approx_eq!(composed, elem.matrix());
+        }
+
+        #[test]
+        fn test_system_propagates_as_if_elements_applied_individually(beam: Beam, elements: Vec<OpticalElement>) {
+            let system = OpticalSystem::new()
+                .with_beam(beam.clone())
+                .with_elements(elements.clone());
+            let by_propagation = system.propagate();
+            prop_assume!(by_propagation.is_ok());
+            let mut by_application = beam;
+            for elem in elements {
+                match elem {
+                    OpticalElement::Identity(inner) => by_application = by_application.apply_element(inner),
+                    OpticalElement::Composite(inner) => by_application = by_application.apply_element(inner),
+                    OpticalElement::PolarizationRotator(inner) => by_application = by_application.apply_element(inner),
+                    OpticalElement::Polarizer(inner) => by_application = by_application.apply_element(inner),
+                    OpticalElement::QuarterWavePlate(inner) => by_application = by_application.apply_element(inner),
+                    OpticalElement::HalfWavePlate(inner) => by_application = by_application.apply_element(inner),
+                    OpticalElement::Retarder(inner) => by_application = by_application.apply_element(inner),
+                }
+            }
+            prop_assert_beam_approx_eq!(by_propagation.unwrap(), by_application);
+        }
+
+        #[test]
+        fn test_composed_matrix_looks_like_multiplied_individuals(beam: Beam, elements: Vec<OpticalElement>) {
+            let system = OpticalSystem::new()
+                .with_beam(beam.clone())
+                .with_elements(elements.clone());
+            let composed = system.composed_elements().unwrap().matrix();
+            let mut multiplied: Matrix2<Complex<f64>> = Matrix2::identity();
+            for elem in elements {
+                match elem {
+                    OpticalElement::Identity(inner) => multiplied = multiplied * inner.matrix(),
+                    OpticalElement::Composite(inner) => multiplied = multiplied * inner.matrix(),
+                    OpticalElement::PolarizationRotator(inner) => multiplied = multiplied * inner.matrix(),
+                    OpticalElement::Polarizer(inner) => multiplied = multiplied * inner.matrix(),
+                    OpticalElement::QuarterWavePlate(inner) => multiplied = multiplied * inner.matrix(),
+                    OpticalElement::HalfWavePlate(inner) => multiplied = multiplied * inner.matrix(),
+                    OpticalElement::Retarder(inner) => multiplied = multiplied * inner.matrix(),
+                }
+            }
+            prop_assert_matrix_approx_eq!(composed, multiplied);
+        }
     }
 }
