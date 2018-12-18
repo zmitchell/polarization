@@ -452,7 +452,8 @@ pub fn any_complex() -> impl Strategy<Value = Complex<f64>> {
 
 #[cfg(test)]
 pub fn nice_f64() -> impl Strategy<Value = f64> {
-    (NORMAL | POSITIVE | NEGATIVE | ZERO)
+//    (NORMAL | POSITIVE | NEGATIVE | ZERO)
+    (-1e3_f64..1e3_f64)
         .prop_filter("f64 shouldn't be too big", |x| x.abs() < 1e3)
         .prop_filter("f64 shouldn't be too small, but may be zero", |x| {
             (x.abs() > 1e-3) || (*x == 0.0)
