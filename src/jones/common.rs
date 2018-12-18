@@ -305,10 +305,10 @@ impl JonesVector for Beam {
         } else {
             // Get the phase in the range [-pi, +pi]
             while new_y_phase < -pi {
-                new_y_phase = new_y_phase + 2.0 * pi;
+                new_y_phase += 2.0 * pi;
             }
             while new_y_phase > pi {
-                new_y_phase = new_y_phase - 2.0 * pi;
+                new_y_phase -= 2.0 * pi;
             }
         }
         let new_y = Complex::from_polar(&new_y_mag, &new_y_phase);
@@ -330,10 +330,10 @@ impl JonesVector for Beam {
         } else {
             // Get the phase in the range [-pi, +pi]
             while new_y_phase < -pi {
-                new_y_phase = new_y_phase + 2.0 * pi;
+                new_y_phase += 2.0 * pi;
             }
             while new_y_phase > pi {
-                new_y_phase = new_y_phase - 2.0 * pi;
+                new_y_phase -= 2.0 * pi;
             }
         }
         self.vec.x = Complex::from_polar(&x_mag, &new_x_phase);
