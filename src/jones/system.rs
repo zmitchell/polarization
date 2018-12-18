@@ -221,7 +221,7 @@ impl OpticalSystem {
                 let mut new_elements = elements.clone();
                 new_elements.push(elem);
                 new_elements
-            },
+            }
             None => vec![elem],
         };
         OpticalSystem {
@@ -322,8 +322,8 @@ impl Arbitrary for OpticalSystem {
 mod test {
     use super::*;
     use jones::common::Angle;
-    use num::complex::Complex;
     use na::Matrix2;
+    use num::complex::Complex;
 
     #[test]
     fn test_elements_applied_in_order() {
@@ -349,8 +349,7 @@ mod test {
     #[test]
     fn test_elements_added_to_system() {
         let ident = IdentityElement::new();
-        let mut system = OpticalSystem::new()
-            .with_element(OpticalElement::Identity(ident));
+        let mut system = OpticalSystem::new().with_element(OpticalElement::Identity(ident));
         assert_eq!(system.elements.clone().unwrap().len(), 1);
         system = system.with_element(OpticalElement::Identity(ident));
         assert_eq!(system.elements.clone().unwrap().len(), 2);

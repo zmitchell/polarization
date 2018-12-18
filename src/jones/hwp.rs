@@ -65,10 +65,10 @@ impl Arbitrary for HalfWavePlate {
         any::<Angle>()
             .prop_map(|angle| HalfWavePlate::new(angle))
             .prop_filter("half-wave plate shouldn't contain NaN", |hwp| {
-                let m00_okay = !hwp.matrix()[(0,0)].is_nan();
-                let m01_okay = !hwp.matrix()[(0,1)].is_nan();
-                let m10_okay = !hwp.matrix()[(1,0)].is_nan();
-                let m11_okay = !hwp.matrix()[(1,1)].is_nan();
+                let m00_okay = !hwp.matrix()[(0, 0)].is_nan();
+                let m01_okay = !hwp.matrix()[(0, 1)].is_nan();
+                let m10_okay = !hwp.matrix()[(1, 0)].is_nan();
+                let m11_okay = !hwp.matrix()[(1, 1)].is_nan();
                 m00_okay && m01_okay && m10_okay && m11_okay
             })
             .boxed()
