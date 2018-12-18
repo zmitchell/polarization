@@ -8,8 +8,6 @@ use std::result;
 use na::{Matrix2, Vector2};
 use num::complex::Complex;
 #[cfg(test)]
-use proptest::num::f64::{NEGATIVE, NORMAL, POSITIVE, ZERO};
-#[cfg(test)]
 use proptest::prelude::*;
 
 /// A more convenient synonym for the type of 2x2 Jones matrices.
