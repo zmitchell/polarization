@@ -265,6 +265,7 @@ impl OpticalSystem {
         Ok(self.beam.clone().unwrap().apply_element(composite))
     }
 
+    #[allow(clippy::let_and_return)]
     pub fn composed_elements(&self) -> Result<CompositeElement> {
         // Bring the variant names into scope just for convenience.
         use self::OpticalElement::*;
@@ -293,6 +294,8 @@ impl OpticalSystem {
                         Identity(id) => id.matrix(),
                         Composite(comp) => comp.matrix(),
                     };
+                    // Binding to "new" isn't strictly necessary, but it makes debugging easier
+                    // since you can directly observe the value of "new".
                     let new = mat * acc;
                     new
                 });
