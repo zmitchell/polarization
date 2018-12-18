@@ -348,9 +348,9 @@ mod test {
         let ident = IdentityElement::new();
         let mut system = OpticalSystem::new()
             .with_element(OpticalElement::Identity(ident));
-        assert!(system.elements.clone().unwrap().len() == 1);
+        assert_eq!(system.elements.clone().unwrap().len(), 1);
         system = system.with_element(OpticalElement::Identity(ident));
-        assert!(system.elements.clone().unwrap().len() == 2);
+        assert_eq!(system.elements.clone().unwrap().len(), 2);
     }
 
     proptest!{
