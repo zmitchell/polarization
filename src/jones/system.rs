@@ -218,9 +218,10 @@ impl OpticalSystem {
     pub fn with_element(self, elem: OpticalElement) -> Self {
         let elements = match self.elements {
             Some(elements) => {
-                elements.clone().push(elem);
-                elements
-            }
+                let mut new_elements = elements.clone();
+                new_elements.push(elem);
+                new_elements
+            },
             None => vec![elem],
         };
         OpticalSystem {
@@ -340,6 +341,16 @@ mod test {
         let beam_after = system.propagate();
         assert!(beam_after.is_ok());
         assert_beam_approx_eq!(beam_after.unwrap(), zero_beam);
+    }
+
+    #[test]
+    fn test_elements_added_to_system() {
+        let ident = IdentityElement::new();
+        let mut system = OpticalSystem::new()
+            .with_element(OpticalElement::Identity(ident));
+        assert!(system.elements.clone().unwrap().len() == 1);
+        system = system.with_element(OpticalElement::Identity(ident));
+        assert!(system.elements.clone().unwrap().len() == 2);
     }
 
     proptest!{
