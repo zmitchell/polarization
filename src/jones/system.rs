@@ -432,13 +432,15 @@ mod test {
             let mut multiplied: Matrix2<Complex<f64>> = Matrix2::identity();
             for elem in elements {
                 match elem {
-                    OpticalElement::Identity(inner) => multiplied = multiplied * inner.matrix(),
-                    OpticalElement::Composite(inner) => multiplied = multiplied * inner.matrix(),
-                    OpticalElement::PolarizationRotator(inner) => multiplied = multiplied * inner.matrix(),
-                    OpticalElement::Polarizer(inner) => multiplied = multiplied * inner.matrix(),
-                    OpticalElement::QuarterWavePlate(inner) => multiplied = multiplied * inner.matrix(),
-                    OpticalElement::HalfWavePlate(inner) => multiplied = multiplied * inner.matrix(),
-                    OpticalElement::Retarder(inner) => multiplied = multiplied * inner.matrix(),
+                    // Remember, the element that the beam encounters first must correspond to the
+                    // matrix that appears on the right!
+                    OpticalElement::Identity(inner) => multiplied = inner.matrix() * multiplied,
+                    OpticalElement::Composite(inner) => multiplied = inner.matrix() * multiplied,
+                    OpticalElement::PolarizationRotator(inner) => multiplied = inner.matrix() * multiplied,
+                    OpticalElement::Polarizer(inner) => multiplied = inner.matrix() * multiplied,
+                    OpticalElement::QuarterWavePlate(inner) => multiplied = inner.matrix() * multiplied,
+                    OpticalElement::HalfWavePlate(inner) => multiplied = inner.matrix() * multiplied,
+                    OpticalElement::Retarder(inner) => multiplied = inner.matrix() * multiplied,
                 }
             }
             prop_assert_matrix_approx_eq!(composed, multiplied);
