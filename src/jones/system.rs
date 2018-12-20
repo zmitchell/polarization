@@ -326,7 +326,7 @@ mod test {
     use num::complex::Complex;
 
     #[test]
-    fn test_elements_applied_in_order() {
+    fn test_elements_are_applied_in_order() {
         // Pass a horizontal beam through a vertical polarizer and then a polarization
         // rotator. If applied in the correct order, the polarizer will kill the beam
         // since the beam and the polarizer axis are perpendicular. The polarization
@@ -347,7 +347,7 @@ mod test {
     }
 
     #[test]
-    fn test_elements_added_to_system() {
+    fn test_element_is_added_to_system() {
         let ident = IdentityElement::new();
         let mut system = OpticalSystem::new().with_element(OpticalElement::Identity(ident));
         assert_eq!(system.elements.clone().unwrap().len(), 1);
@@ -356,6 +356,27 @@ mod test {
     }
 
     proptest!{
+        #[test]
+        fn test_elements_are_added_to_system_during_construction(elems: Vec<OpticalElement>) {
+            let num_elems = elems.len();
+            let system = OpticalSystem::new().with_elements(elems);
+            let num_elems_in_system = system.elements.clone().unwrap().len();
+            prop_assert_eq!(num_elems, num_elems_in_system);
+        }
+
+        #[test]
+        fn test_additional_elements_are_added_to_system(elems1: Vec<OpticalElement>, elems2: Vec<OpticalElement>) {
+            let len1 = elems1.len();
+            let len2 = elems2.len();
+            let mut system = OpticalSystem::new().with_elements(elems1);
+            let len_after_elems1 = system.elements.clone().unwrap().len();
+            prop_assert_eq!(len_after_elems1, len1);
+            system = system.with_elements(elems2);
+            let len_after_elems2 = system.elements.clone().unwrap().len();
+            let expected_len = len1 + len2;
+            prop_assert_eq!(len_after_elems2, expected_len);
+        }
+
         #[test]
         fn test_beam_passes_through(beam: Beam) {
             let ident = IdentityElement::new();
@@ -408,6 +429,7 @@ mod test {
                 .with_elements(elements.clone());
             let by_propagation = system.propagate();
             prop_assume!(by_propagation.is_ok());
+            let by_propagation = by_propagation.unwrap();
             let mut by_application = beam;
             for elem in elements {
                 match elem {
@@ -420,7 +442,7 @@ mod test {
                     OpticalElement::Retarder(inner) => by_application = by_application.apply_element(inner),
                 }
             }
-            prop_assert_beam_approx_eq!(by_propagation.unwrap(), by_application);
+            prop_assert_beam_approx_eq!(by_propagation, by_application);
         }
 
         #[test]
