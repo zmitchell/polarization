@@ -118,7 +118,7 @@ fn any_retarder() -> impl Strategy<Value = Retarder> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jones::common::{Beam, JonesVector};
+    use jones::common::{are_rel_eq, Beam, JonesVector};
 
     proptest! {
         #[test]

@@ -78,7 +78,7 @@ impl Arbitrary for HalfWavePlate {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{Beam, JonesVector};
+    use jones::common::{are_rel_eq, Beam, JonesVector};
 
     #[test]
     fn test_hwp_ignores_parallel_beam() {

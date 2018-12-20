@@ -499,9 +499,20 @@ macro_rules! assert_matrix_approx_eq {
 }
 
 #[cfg(test)]
+pub fn are_rel_eq(x: f64, y: f64, frac: f64) -> bool {
+    let diff = (x - y).abs();
+    let avg = ((x + y) / 2.0).abs();
+    let mut limit = avg * frac;
+    if limit < 1e-6 {
+        limit = 1e-6;
+    }
+    diff < limit
+}
+
+#[cfg(test)]
 macro_rules! prop_assert_approx_eq {
     ($x:expr, $y:expr) => {
-        prop_assert!(($x - $y).abs() < 1e-6)
+        prop_assert!(are_rel_eq($x, $y, 1e-3))
     };
 }
 
@@ -535,236 +546,240 @@ macro_rules! prop_assert_matrix_approx_eq {
 
 // Beam tests
 #[cfg(test)]
-proptest! {
-   #[test]
-   fn test_intensity_one_real_component(n: f64) {
-       let beam = Beam::new(
-           Complex::new(n, 0_f64),
-           Complex::new(0_f64, 0_f64),
-       );
-       let intensity = beam.intensity();
-       prop_assume!(intensity.is_ok());
-       prop_assert_approx_eq!(n.powi(2), intensity.unwrap());
-   }
+mod test {
+    use super::*;
 
-   #[test]
-   fn test_intensity_is_never_negative(beam: Beam) {
-       prop_assume!(beam.intensity().is_ok());
-       let intensity = beam.intensity().unwrap();
-       prop_assert!(intensity >= 0.0);
-   }
+    proptest! {
+       #[test]
+       fn test_intensity_one_real_component(n: f64) {
+           let beam = Beam::new(
+               Complex::new(n, 0_f64),
+               Complex::new(0_f64, 0_f64),
+           );
+           let intensity = beam.intensity();
+           prop_assume!(intensity.is_ok());
+           prop_assert_approx_eq!(n.powi(2), intensity.unwrap());
+       }
 
-   #[test]
-   fn test_intensity_mag_with_complex(x in any_complex(), y in any_complex()) {
-       let xr = x.re;
-       let xi = x.im;
-       let yr = y.re;
-       let yi = y.im;
-       let by_hand = xr.powi(2) + xi.powi(2) + yr.powi(2) + yi.powi(2);
-       let beam = Beam::new(x, y);
-       prop_assume!(beam.intensity().is_ok());
-       prop_assert_approx_eq!(beam.intensity().unwrap(), by_hand);
-   }
+       #[test]
+       fn test_intensity_is_never_negative(beam: Beam) {
+           prop_assume!(beam.intensity().is_ok());
+           let intensity = beam.intensity().unwrap();
+           prop_assert!(intensity >= 0.0);
+       }
 
-   #[test]
-   fn test_common_phase_preserves_x_mag(beam: Beam) {
-       let old_x_mag = beam.x().norm();
-       let new_beam = beam.remove_common_phase();
-       let new_x_mag = new_beam.x().norm();
-       prop_assert_eq!(old_x_mag, new_x_mag);
-   }
+       #[test]
+       fn test_intensity_mag_with_complex(x in any_complex(), y in any_complex()) {
+           let xr = x.re;
+           let xi = x.im;
+           let yr = y.re;
+           let yi = y.im;
+           let by_hand = xr.powi(2) + xi.powi(2) + yr.powi(2) + yi.powi(2);
+           let beam = Beam::new(x, y);
+           prop_assume!(beam.intensity().is_ok());
+           prop_assert_approx_eq!(beam.intensity().unwrap(), by_hand);
+       }
 
-   #[test]
-   fn test_common_phase_preserves_y_mag(beam: Beam) {
-       let old_y_mag = beam.y().norm();
-       let new_beam = beam.remove_common_phase();
-       let new_y_mag = new_beam.y().norm();
-       prop_assert!((old_y_mag - new_y_mag).abs() < 1e-6);
-   }
+       #[test]
+       fn test_common_phase_preserves_x_mag(beam: Beam) {
+           let old_x_mag = beam.x().norm();
+           let new_beam = beam.remove_common_phase();
+           let new_x_mag = new_beam.x().norm();
+           prop_assert_eq!(old_x_mag, new_x_mag);
+       }
 
-   #[test]
-   fn test_common_phase_zeroes_x_phase(beam: Beam) {
-       let new_beam = beam.remove_common_phase();
-       let new_phase = new_beam.x().arg();
-       prop_assert!(new_phase.abs() < 1e-6);
-   }
+       #[test]
+       fn test_common_phase_preserves_y_mag(beam: Beam) {
+           let old_y_mag = beam.y().norm();
+           let new_beam = beam.remove_common_phase();
+           let new_y_mag = new_beam.y().norm();
+           prop_assert!((old_y_mag - new_y_mag).abs() < 1e-6);
+       }
 
-   #[test]
-   fn test_common_phase_correct_y_phase(beam: Beam) {
-       let old_y_phase = beam.y().arg();
-       let old_x_phase = beam.x().arg();
-       let new_beam = beam.remove_common_phase();
-       let new_y_phase = new_beam.y().arg();
-       let mut expected_y_phase = old_y_phase - old_x_phase;
-       if beam.y().norm() == 0.0 {
-           // Regardless of the difference between old_y_phase and old_x_phase, if the magnitude of
-           // y is +0.0, the new phase will be wiped out. The complex number is stored as real and
-           // imaginary parts computed as mag*cos(phase) and mag*sin(phase) respectively, so when
-           // the magnitude is zero, mag*sin(phase) is also zero. This makes it such that the phase
-           // you use to construct the complex number will not be the phase returned by
-           // beam.y().arg().
-           expected_y_phase = 0.0;
-       } else {
-           // Get the phase in the range [-pi, pi]
-           while expected_y_phase < -pi {
-               expected_y_phase = expected_y_phase + 2.0 * pi;
+       #[test]
+       fn test_common_phase_zeroes_x_phase(beam: Beam) {
+           let new_beam = beam.remove_common_phase();
+           let new_phase = new_beam.x().arg();
+           prop_assert!(new_phase.abs() < 1e-6);
+       }
+
+       #[test]
+       fn test_common_phase_correct_y_phase(beam: Beam) {
+           let old_y_phase = beam.y().arg();
+           let old_x_phase = beam.x().arg();
+           let new_beam = beam.remove_common_phase();
+           let new_y_phase = new_beam.y().arg();
+           let mut expected_y_phase = old_y_phase - old_x_phase;
+           if beam.y().norm() == 0.0 {
+               // Regardless of the difference between old_y_phase and old_x_phase, if the magnitude of
+               // y is +0.0, the new phase will be wiped out. The complex number is stored as real and
+               // imaginary parts computed as mag*cos(phase) and mag*sin(phase) respectively, so when
+               // the magnitude is zero, mag*sin(phase) is also zero. This makes it such that the phase
+               // you use to construct the complex number will not be the phase returned by
+               // beam.y().arg().
+               expected_y_phase = 0.0;
+           } else {
+               // Get the phase in the range [-pi, pi]
+               while expected_y_phase < -pi {
+                   expected_y_phase = expected_y_phase + 2.0 * pi;
+               }
+               while expected_y_phase > pi {
+                   expected_y_phase = expected_y_phase - 2.0 * pi;
+               }
            }
-           while expected_y_phase > pi {
-               expected_y_phase = expected_y_phase - 2.0 * pi;
+           // If the magnitude is zero, the phase will also be set to zero due to how
+           // Complex::from_polar is implemented, so the phases won't match up. In this
+           // test I'll check that the magnitude is zero if the phases don't match.
+           if (expected_y_phase - new_y_phase).abs() > 1e-6 {
+               let new_norm = new_beam.y().norm();
+               if new_norm.abs() == 0.0 {
+                   prop_assert!(new_y_phase.abs() < 1e-6);
+               }
+           } else {
+               prop_assert!((expected_y_phase - new_y_phase).abs() < 1e-6);
            }
        }
-       // If the magnitude is zero, the phase will also be set to zero due to how
-       // Complex::from_polar is implemented, so the phases won't match up. In this
-       // test I'll check that the magnitude is zero if the phases don't match.
-       if (expected_y_phase - new_y_phase).abs() > 1e-6 {
-           let new_norm = new_beam.y().norm();
-           if new_norm.abs() == 0.0 {
-               prop_assert!(new_y_phase.abs() < 1e-6);
-           }
-       } else {
-           prop_assert!((expected_y_phase - new_y_phase).abs() < 1e-6);
+
+       #[test]
+       fn test_common_phase_preserves_intensity(beam: Beam) {
+           let old_intensity = beam.intensity();
+           prop_assume!(old_intensity.is_ok());
+           let new_beam = beam.remove_common_phase();
+           let new_intensity = new_beam.intensity();
+           prop_assert!(new_intensity.is_ok());
+           prop_assert!((new_intensity.unwrap() - old_intensity.unwrap()).abs() < 1e-6);
        }
-   }
 
-   #[test]
-   fn test_common_phase_preserves_intensity(beam: Beam) {
-       let old_intensity = beam.intensity();
-       prop_assume!(old_intensity.is_ok());
-       let new_beam = beam.remove_common_phase();
-       let new_intensity = new_beam.intensity();
-       prop_assert!(new_intensity.is_ok());
-       prop_assert!((new_intensity.unwrap() - old_intensity.unwrap()).abs() < 1e-6);
-   }
+        #[test]
+        fn test_common_phase_mut_preserves_x_mag(beam: Beam) {
+            let old_x_mag = beam.x().norm();
+            beam.remove_common_phase();
+            let new_x_mag = beam.x().norm();
+            prop_assert_eq!(old_x_mag, new_x_mag);
+        }
 
-    #[test]
-    fn test_common_phase_mut_preserves_x_mag(beam: Beam) {
-        let old_x_mag = beam.x().norm();
-        beam.remove_common_phase();
-        let new_x_mag = beam.x().norm();
-        prop_assert_eq!(old_x_mag, new_x_mag);
-    }
+        #[test]
+        fn test_common_phase_mut_preserves_y_mag(beam: Beam) {
+            let old_y_mag = beam.y().norm();
+            beam.remove_common_phase();
+            let new_y_mag = beam.y().norm();
+            prop_assert!((old_y_mag - new_y_mag).abs() < 1e-6);
+        }
 
-    #[test]
-    fn test_common_phase_mut_preserves_y_mag(beam: Beam) {
-        let old_y_mag = beam.y().norm();
-        beam.remove_common_phase();
-        let new_y_mag = beam.y().norm();
-        prop_assert!((old_y_mag - new_y_mag).abs() < 1e-6);
-    }
+        #[test]
+        fn test_common_phase_mut_zeroes_x_phase(mut beam: Beam) {
+            beam.remove_common_phase_mut();
+            let new_phase = beam.x().arg();
+            prop_assert!(new_phase.abs() < 1e-6);
+        }
 
-    #[test]
-    fn test_common_phase_mut_zeroes_x_phase(mut beam: Beam) {
-        beam.remove_common_phase_mut();
-        let new_phase = beam.x().arg();
-        prop_assert!(new_phase.abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_common_phase_mut_correct_y_phase(mut beam: Beam) {
-        let old_y_phase = beam.y().arg();
-        let old_x_phase = beam.x().arg();
-        beam.remove_common_phase_mut();
-        let new_y_phase = beam.y().arg();
-        let mut expected_y_phase = old_y_phase - old_x_phase;
-        if beam.y().norm() == 0.0 {
-           // Regardless of the difference between old_y_phase and old_x_phase, if the magnitude of
-           // y is +0.0, the new phase will be wiped out. The complex number is stored as real and
-           // imaginary parts computed as mag*cos(phase) and mag*sin(phase) respectively, so when
-           // the magnitude is zero, mag*sin(phase) is also zero. This makes it such that the phase
-           // you use to construct the complex number will not be the phase returned by
-           // beam.y().arg().
-            expected_y_phase = 0.0;
-        } else {
-            // Get the phase in the range [-pi, pi]
-            while expected_y_phase < - pi {
-                expected_y_phase = expected_y_phase + 2.0 * pi;
+        #[test]
+        fn test_common_phase_mut_correct_y_phase(mut beam: Beam) {
+            let old_y_phase = beam.y().arg();
+            let old_x_phase = beam.x().arg();
+            beam.remove_common_phase_mut();
+            let new_y_phase = beam.y().arg();
+            let mut expected_y_phase = old_y_phase - old_x_phase;
+            if beam.y().norm() == 0.0 {
+               // Regardless of the difference between old_y_phase and old_x_phase, if the magnitude of
+               // y is +0.0, the new phase will be wiped out. The complex number is stored as real and
+               // imaginary parts computed as mag*cos(phase) and mag*sin(phase) respectively, so when
+               // the magnitude is zero, mag*sin(phase) is also zero. This makes it such that the phase
+               // you use to construct the complex number will not be the phase returned by
+               // beam.y().arg().
+                expected_y_phase = 0.0;
+            } else {
+                // Get the phase in the range [-pi, pi]
+                while expected_y_phase < - pi {
+                    expected_y_phase = expected_y_phase + 2.0 * pi;
+                }
+                while expected_y_phase > pi {
+                    expected_y_phase = expected_y_phase - 2.0 * pi;
+                }
             }
-            while expected_y_phase > pi {
-                expected_y_phase = expected_y_phase - 2.0 * pi;
+            // If the magnitude is zero, the phase will also be set to zero due to how
+            // Complex::from_polar is implemented, so the phases won't match up. In this
+            // test I'll check that the magnitude is zero if the phases don't match.
+            if (expected_y_phase - new_y_phase).abs() > 1e-6 {
+                let new_norm = beam.y().norm();
+                if new_norm.abs() == 0.0 {
+                    prop_assert!(new_y_phase.abs() < 1e-6);
+                }
+            } else {
+                prop_assert!((expected_y_phase - new_y_phase).abs() < 1e-6);
             }
         }
-        // If the magnitude is zero, the phase will also be set to zero due to how
-        // Complex::from_polar is implemented, so the phases won't match up. In this
-        // test I'll check that the magnitude is zero if the phases don't match.
-        if (expected_y_phase - new_y_phase).abs() > 1e-6 {
-            let new_norm = beam.y().norm();
-            if new_norm.abs() == 0.0 {
-                prop_assert!(new_y_phase.abs() < 1e-6);
-            }
-        } else {
-            prop_assert!((expected_y_phase - new_y_phase).abs() < 1e-6);
+
+        #[test]
+        fn test_common_phase_mut_preserves_intensity(beam: Beam) {
+            let old_intensity = beam.intensity();
+            prop_assume!(old_intensity.is_ok());
+            beam.remove_common_phase();
+            let new_intensity = beam.intensity();
+            prop_assert!(new_intensity.is_ok());
+            prop_assert!((new_intensity.unwrap() - old_intensity.unwrap()).abs() < 1e-6);
         }
-    }
-
-    #[test]
-    fn test_common_phase_mut_preserves_intensity(beam: Beam) {
-        let old_intensity = beam.intensity();
-        prop_assume!(old_intensity.is_ok());
-        beam.remove_common_phase();
-        let new_intensity = beam.intensity();
-        prop_assert!(new_intensity.is_ok());
-        prop_assert!((new_intensity.unwrap() - old_intensity.unwrap()).abs() < 1e-6);
-    }
 
 
-   #[test]
-   fn test_relative_phase(x in any_complex(), y in any_complex()) {
-       let expected_rad = y.arg() - x.arg();
-       let expected_deg = expected_rad.to_degrees();
-       let beam = Beam::new(x, y);
-       prop_assert_approx_eq!(expected_rad, beam.relative_phase_rad());
-       prop_assert_approx_eq!(expected_deg, beam.relative_phase_deg());
-   }
+       #[test]
+       fn test_relative_phase(x in any_complex(), y in any_complex()) {
+           let expected_rad = y.arg() - x.arg();
+           let expected_deg = expected_rad.to_degrees();
+           let beam = Beam::new(x, y);
+           prop_assert_approx_eq!(expected_rad, beam.relative_phase_rad());
+           prop_assert_approx_eq!(expected_deg, beam.relative_phase_deg());
+       }
 
-    #[test]
-    fn test_construct_beam_from_xy(x in any_complex(), y in any_complex()) {
-        let beam = Beam::new(x, y);
-        prop_assert_eq!(beam.x(), x);
-        prop_assert_eq!(beam.y(), y);
-    }
+        #[test]
+        fn test_construct_beam_from_xy(x in any_complex(), y in any_complex()) {
+            let beam = Beam::new(x, y);
+            prop_assert_eq!(beam.x(), x);
+            prop_assert_eq!(beam.y(), y);
+        }
 
-    #[test]
-    fn test_rotate_360_degrees_returns_original(m00 in any_complex(),
-                                                m01 in any_complex(),
-                                                m10 in any_complex(),
-                                                m11 in any_complex()) {
-        let mat = Matrix2::new(m00, m01, m10, m11);
-        let angle = Angle::Degrees(360_f64);
-        let rotated = rotate_matrix(&mat, &angle);
-        prop_assert_matrix_approx_eq!(mat, rotated);
-    }
+        #[test]
+        fn test_rotate_360_degrees_returns_original(m00 in any_complex(),
+                                                    m01 in any_complex(),
+                                                    m10 in any_complex(),
+                                                    m11 in any_complex()) {
+            let mat = Matrix2::new(m00, m01, m10, m11);
+            let angle = Angle::Degrees(360_f64);
+            let rotated = rotate_matrix(&mat, &angle);
+            prop_assert_matrix_approx_eq!(mat, rotated);
+        }
 
-   #[test]
-   fn test_rotate_2pi_rad_returns_original(m00 in any_complex(),
-                                           m01 in any_complex(),
-                                           m10 in any_complex(),
-                                           m11 in any_complex()) {
-       let mat = Matrix2::new(m00, m01, m10, m11);
-       let angle = Angle::Radians(2.0 * pi);
-       let rotated = rotate_matrix(&mat, &angle);
-       prop_assert_matrix_approx_eq!(mat, rotated);
-   }
+       #[test]
+       fn test_rotate_2pi_rad_returns_original(m00 in any_complex(),
+                                               m01 in any_complex(),
+                                               m10 in any_complex(),
+                                               m11 in any_complex()) {
+           let mat = Matrix2::new(m00, m01, m10, m11);
+           let angle = Angle::Radians(2.0 * pi);
+           let rotated = rotate_matrix(&mat, &angle);
+           prop_assert_matrix_approx_eq!(mat, rotated);
+       }
 
-   #[test]
-   fn test_rotate_0_degrees_returns_original(m00 in any_complex(),
+       #[test]
+       fn test_rotate_0_degrees_returns_original(m00 in any_complex(),
+                                                 m01 in any_complex(),
+                                                 m10 in any_complex(),
+                                                 m11 in any_complex()) {
+           let mat = Matrix2::new(m00, m01, m10, m11);
+           let angle = Angle::Degrees(0_f64);
+           let rotated = rotate_matrix(&mat, &angle);
+           prop_assert_matrix_approx_eq!(mat, rotated);
+       }
+
+       #[test]
+       fn test_rotate_0_rad_returns_original(m00 in any_complex(),
                                              m01 in any_complex(),
                                              m10 in any_complex(),
                                              m11 in any_complex()) {
-       let mat = Matrix2::new(m00, m01, m10, m11);
-       let angle = Angle::Degrees(0_f64);
-       let rotated = rotate_matrix(&mat, &angle);
-       prop_assert_matrix_approx_eq!(mat, rotated);
-   }
+           let mat = Matrix2::new(m00, m01, m10, m11);
+           let angle = Angle::Radians(0_f64);
+           let rotated = rotate_matrix(&mat, &angle);
+           prop_assert_matrix_approx_eq!(mat, rotated);
+       }
 
-   #[test]
-   fn test_rotate_0_rad_returns_original(m00 in any_complex(),
-                                         m01 in any_complex(),
-                                         m10 in any_complex(),
-                                         m11 in any_complex()) {
-       let mat = Matrix2::new(m00, m01, m10, m11);
-       let angle = Angle::Radians(0_f64);
-       let rotated = rotate_matrix(&mat, &angle);
-       prop_assert_matrix_approx_eq!(mat, rotated);
-   }
-
+    }
 }

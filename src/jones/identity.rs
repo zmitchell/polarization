@@ -72,7 +72,7 @@ impl Arbitrary for IdentityElement {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{float_angle, Beam, JonesVector};
+    use jones::common::{are_rel_eq, float_angle, Beam, JonesVector};
 
     proptest! {
         #[test]

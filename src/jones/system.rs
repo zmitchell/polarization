@@ -321,7 +321,7 @@ impl Arbitrary for OpticalSystem {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::Angle;
+    use jones::common::{are_rel_eq, Angle};
     use na::Matrix2;
     use num::complex::Complex;
 

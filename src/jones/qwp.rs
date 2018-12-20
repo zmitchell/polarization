@@ -72,7 +72,7 @@ impl Arbitrary for QuarterWavePlate {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{pi, Beam, JonesVector};
+    use jones::common::{are_rel_eq, pi, Beam, JonesVector};
 
     #[test]
     fn test_horizontal_qwp_doesnt_modify_horizontal_beam() {

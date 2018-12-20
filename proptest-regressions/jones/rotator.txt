@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+xs 3310282236 2033605958 3431148679 943772114 # shrinks to beam = Beam { vec: Matrix { data: [Complex { re: 1.0, im: 0.0 }, Complex { re: 0.0, im: 0.0 }] } }
+xs 2146496911 2330944083 2987818406 582241988 # shrinks to beam = Beam { vec: Matrix { data: [Complex { re: 1.0, im: 0.0 }, Complex { re: 0.0, im: 0.0 }] } }
