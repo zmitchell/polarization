@@ -60,8 +60,8 @@
 //! let beam = Beam::linear(Angle::Degrees(0.0));
 //! let pol = OpticalElement::Polarizer(Polarizer::new(Angle::Degrees(45.0)));
 //! let system = OpticalSystem::new()
-//!     .with_beam(beam)
-//!     .with_element(pol);
+//!     .add_beam(beam)
+//!     .add_element(pol);
 //! let final_beam: Result<Beam> = system.propagate();
 //! ```
 //!

@@ -124,11 +124,11 @@ impl Arbitrary for OpticalElement {
 /// let pol = OpticalElement::Polarizer(Polarizer::new(Angle::Degrees(45.0)));
 /// // The optical system
 /// let system = OpticalSystem::new()
-///     .with_beam(beam)
-///     .with_element(pol);
+///     .add_beam(beam)
+///     .add_element(pol);
 /// ```
 /// If you have several elements, you may also add them to the system using the
-/// `with_elements` method.
+/// `add_elements` method.
 ///
 /// The beam may be propagated through the elements in the system, returning a new beam.
 /// ```
@@ -136,8 +136,8 @@ impl Arbitrary for OpticalElement {
 /// # let beam = Beam::linear(Angle::Degrees(0.0));
 /// # let pol = OpticalElement::Polarizer(Polarizer::new(Angle::Degrees(45.0)));
 /// # let system = OpticalSystem::new()
-/// #     .with_beam(beam)
-/// #     .with_element(pol);
+/// #     .add_beam(beam)
+/// #     .add_element(pol);
 /// let final_beam: Result<Beam> = system.propagate();
 /// ```
 /// This operation may fail because you're human and maybe you forgot to add a beam or
@@ -159,9 +159,9 @@ impl Arbitrary for OpticalElement {
 ///     PolarizationRotator::new(Angle::Degrees(90.0))
 /// );
 /// let system = OpticalSystem::new()
-///     .with_beam(beam.clone())
-///     .with_element(pol.clone())  // this kills the beam!
-///     .with_element(rot.clone());  // this does nothing now
+///     .add_beam(beam.clone())
+///     .add_element(pol.clone())  // this kills the beam!
+///     .add_element(rot.clone());  // this does nothing now
 /// let beam_after = system.propagate().unwrap();
 /// assert!(beam_after.intensity().unwrap() < 1e-6);
 /// ```
@@ -177,9 +177,9 @@ impl Arbitrary for OpticalElement {
 /// #     PolarizationRotator::new(Angle::Degrees(90.0))
 /// # );
 /// let system = OpticalSystem::new()
-///     .with_beam(beam.clone())
-///     .with_element(rot.clone())  // beam and polarizer are now parallel
-///     .with_element(pol.clone());
+///     .add_beam(beam.clone())
+///     .add_element(rot.clone())  // beam and polarizer are now parallel
+///     .add_element(pol.clone());
 /// let beam_after = system.propagate().unwrap();
 /// assert!(beam_after.intensity().unwrap() > 0.99);
 /// ```
@@ -202,10 +202,10 @@ impl OpticalSystem {
         }
     }
 
-    /// Add a beam to the optical system.
+    /// Add a beam to the optical system, consuming the current system.
     ///
     /// Calling this method more than once will overwrite the previously added beam.
-    pub fn with_beam(self, beam: Beam) -> Self {
+    pub fn add_beam(self, beam: Beam) -> Self {
         OpticalSystem {
             beam: Some(beam),
             elements: self.elements,
@@ -215,7 +215,7 @@ impl OpticalSystem {
     /// Add an optical element to the system.
     ///
     /// The beam will pass through the elements in the order that they are added.
-    pub fn with_element(self, elem: OpticalElement) -> Self {
+    pub fn add_element(self, elem: OpticalElement) -> Self {
         let elements = match self.elements {
             Some(elements) => {
                 let mut new_elements = elements.clone();
@@ -234,7 +234,7 @@ impl OpticalSystem {
     ///
     /// If elements have already been added to the system, these elements will be added after
     /// the existing elements.
-    pub fn with_elements(self, elems: Vec<OpticalElement>) -> Self {
+    pub fn add_elements(self, elems: Vec<OpticalElement>) -> Self {
         if self.elements.is_none() {
             let system = OpticalSystem {
                 beam: self.beam,
@@ -338,9 +338,9 @@ mod test {
         let pol = Polarizer::new(Angle::Degrees(90.0));
         let rot = PolarizationRotator::new(Angle::Degrees(90.0));
         let system = OpticalSystem::new()
-            .with_beam(beam)
-            .with_element(OpticalElement::Polarizer(pol))
-            .with_element(OpticalElement::PolarizationRotator(rot));
+            .add_beam(beam)
+            .add_element(OpticalElement::Polarizer(pol))
+            .add_element(OpticalElement::PolarizationRotator(rot));
         let beam_after = system.propagate();
         assert!(beam_after.is_ok());
         assert_beam_approx_eq!(beam_after.unwrap(), zero_beam);
@@ -349,9 +349,9 @@ mod test {
     #[test]
     fn test_element_is_added_to_system() {
         let ident = IdentityElement::new();
-        let mut system = OpticalSystem::new().with_element(OpticalElement::Identity(ident));
+        let mut system = OpticalSystem::new().add_element(OpticalElement::Identity(ident));
         assert_eq!(system.elements.clone().unwrap().len(), 1);
-        system = system.with_element(OpticalElement::Identity(ident));
+        system = system.add_element(OpticalElement::Identity(ident));
         assert_eq!(system.elements.clone().unwrap().len(), 2);
     }
 
@@ -359,7 +359,7 @@ mod test {
         #[test]
         fn test_elements_are_added_to_system_during_construction(elems: Vec<OpticalElement>) {
             let num_elems = elems.len();
-            let system = OpticalSystem::new().with_elements(elems);
+            let system = OpticalSystem::new().add_elements(elems);
             let num_elems_in_system = system.elements.clone().unwrap().len();
             prop_assert_eq!(num_elems, num_elems_in_system);
         }
@@ -368,10 +368,10 @@ mod test {
         fn test_additional_elements_are_added_to_system(elems1: Vec<OpticalElement>, elems2: Vec<OpticalElement>) {
             let len1 = elems1.len();
             let len2 = elems2.len();
-            let mut system = OpticalSystem::new().with_elements(elems1);
+            let mut system = OpticalSystem::new().add_elements(elems1);
             let len_after_elems1 = system.elements.clone().unwrap().len();
             prop_assert_eq!(len_after_elems1, len1);
-            system = system.with_elements(elems2);
+            system = system.add_elements(elems2);
             let len_after_elems2 = system.elements.clone().unwrap().len();
             let expected_len = len1 + len2;
             prop_assert_eq!(len_after_elems2, expected_len);
@@ -382,8 +382,8 @@ mod test {
             let ident = IdentityElement::new();
             let element = OpticalElement::Identity(ident);
             let system = OpticalSystem::new()
-                .with_beam(beam.clone())
-                .with_element(element);
+                .add_beam(beam.clone())
+                .add_element(element);
             let beam_after = system.propagate();
             assert!(beam_after.is_ok());
             assert_beam_approx_eq!(beam_after.unwrap(), beam);
@@ -392,8 +392,8 @@ mod test {
         #[test]
         fn test_single_composed_element_is_returned_untouched(beam: Beam, elem: OpticalElement) {
             let system = OpticalSystem::new()
-                .with_beam(beam)
-                .with_element(elem.clone());
+                .add_beam(beam)
+                .add_element(elem.clone());
             let composed = system.composed_elements().unwrap().matrix();
             let original = elem.matrix();
             prop_assert_matrix_approx_eq!(composed, original);
@@ -403,10 +403,10 @@ mod test {
         fn test_composed_identity_looks_like_identity(beam: Beam) {
             let ident = IdentityElement::new();
             let system = OpticalSystem::new()
-                .with_beam(beam)
-                .with_element(OpticalElement::Identity(ident.clone()))
-                .with_element(OpticalElement::Identity(ident.clone()))
-                .with_element(OpticalElement::Identity(ident.clone()));
+                .add_beam(beam)
+                .add_element(OpticalElement::Identity(ident.clone()))
+                .add_element(OpticalElement::Identity(ident.clone()))
+                .add_element(OpticalElement::Identity(ident.clone()));
             let composed = system.composed_elements().unwrap().matrix();
             prop_assert_matrix_approx_eq!(composed, ident.matrix());
         }
@@ -415,9 +415,9 @@ mod test {
         fn test_mat_composed_with_identity_is_untouched(beam: Beam, elem: CompositeElement) {
             let ident = IdentityElement::new();
             let system = OpticalSystem::new()
-                .with_beam(beam)
-                .with_element(OpticalElement::Identity(ident))
-                .with_element(OpticalElement::Composite(elem.clone()));
+                .add_beam(beam)
+                .add_element(OpticalElement::Identity(ident))
+                .add_element(OpticalElement::Composite(elem.clone()));
             let composed = system.composed_elements().unwrap().matrix();
             prop_assert_matrix_approx_eq!(composed, elem.matrix());
         }
@@ -425,8 +425,8 @@ mod test {
         #[test]
         fn test_system_propagates_as_if_elements_applied_individually(beam: Beam, elements: Vec<OpticalElement>) {
             let system = OpticalSystem::new()
-                .with_beam(beam.clone())
-                .with_elements(elements.clone());
+                .add_beam(beam.clone())
+                .add_elements(elements.clone());
             let by_propagation = system.propagate();
             prop_assume!(by_propagation.is_ok());
             let by_propagation = by_propagation.unwrap();
@@ -448,8 +448,8 @@ mod test {
         #[test]
         fn test_composed_matrix_looks_like_multiplied_individuals(beam: Beam, elements: Vec<OpticalElement>) {
             let system = OpticalSystem::new()
-                .with_beam(beam.clone())
-                .with_elements(elements.clone());
+                .add_beam(beam.clone())
+                .add_elements(elements.clone());
             let composed = system.composed_elements().unwrap().matrix();
             let mut multiplied: Matrix2<Complex<f64>> = Matrix2::identity();
             for elem in elements {
