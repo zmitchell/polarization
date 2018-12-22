@@ -250,6 +250,55 @@ impl OpticalSystem {
         }
     }
 
+    /// Add a beam to a system in-place.
+    ///
+    /// If the system already contains a beam, it will be discarded.
+    pub fn add_beam_mut(&mut self, beam: Beam) {
+        self.beam = Some(beam);
+    }
+
+    /// Clear the beam from the system.
+    pub fn clear_beam(&mut self) {
+        self.beam = None;
+    }
+
+    /// Add an element to a system in-place.
+    ///
+    /// The beam will travel the elements in the order in which they are added to the system.
+    pub fn add_element_mut(&mut self, elem: OpticalElement) {
+        let elems = self.elements.take();
+        match elems {
+            Some(mut elems) => {
+                elems.push(elem);
+                self.elements = Some(elems);
+            },
+            None => {
+                self.elements = Some(vec![elem]);
+            }
+        }
+    }
+
+    /// Add multiple elements to the system at once, modifying it in-place.
+    ///
+    /// The beam will travel through elements in the order in which they are added to the system.
+    pub fn add_elements_mut(&mut self, elems: Vec<OpticalElement>) {
+        let existing = self.elements.take();
+        match existing {
+            Some(mut existing) => {
+                existing.extend(elems);
+                self.elements = Some(existing);
+            },
+            None => {
+                self.elements = Some(elems);
+            }
+        }
+    }
+
+    /// Clear all of the elements from the system.
+    pub fn clear_elements(&mut self) {
+        self.elements = None;
+    }
+
     /// Propagate the beam through the elements in the system, returning the final beam.
     /// Will return an error if there is no beam in the system, or if there are no elements in
     /// the system.
@@ -356,6 +405,57 @@ mod test {
     }
 
     proptest!{
+        #[test]
+        fn test_element_is_added_in_place(mut sys: OpticalSystem, elem: OpticalElement) {
+            let len_before = match sys.elements.clone() {
+                Some(elems) => {
+                    elems.len()
+                },
+                None => 0
+            };
+            let len_expected = len_before + 1;
+            sys.add_element_mut(elem);
+            let len_after = sys.elements.clone().unwrap().len();
+            prop_assert_eq!(len_after, len_expected);
+        }
+
+        #[test]
+        fn test_elements_are_added_in_place(mut sys: OpticalSystem, elems: Vec<OpticalElement>) {
+            let len_before = match sys.elements.clone() {
+                Some(existing) => {
+                    existing.len()
+                },
+                None => 0
+            };
+            let len_to_add = elems.len();
+            let len_expected = len_before + len_to_add;
+            sys.add_elements_mut(elems);
+            let len_after = sys.elements.clone().unwrap().len();
+            prop_assert_eq!(len_after, len_expected);
+        }
+
+        #[test]
+        fn test_beam_is_added_in_place(mut sys: OpticalSystem, beam: Beam) {
+            let beam_clone = beam.clone();
+            sys.add_beam_mut(beam);
+            let in_system = sys.beam.take().unwrap();
+            prop_assert_beam_approx_eq!(in_system, beam_clone);
+        }
+
+        #[test]
+        fn test_beam_is_cleared(mut sys: OpticalSystem) {
+            prop_assume!(sys.beam.is_some());
+            sys.clear_beam();
+            prop_assert!(sys.beam.is_none());
+        }
+
+        #[test]
+        fn test_elements_are_cleared(mut sys: OpticalSystem) {
+            prop_assume!(sys.elements.is_some());
+            sys.clear_elements();
+            prop_assert!(sys.elements.is_none());
+        }
+
         #[test]
         fn test_elements_are_added_to_system_during_construction(elems: Vec<OpticalElement>) {
             let num_elems = elems.len();
