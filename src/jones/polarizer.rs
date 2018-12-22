@@ -63,7 +63,7 @@ impl Arbitrary for Polarizer {
 #[cfg(test)]
 mod test {
     use super::*;
-    use jones::common::{any_complex, Beam, JonesVector};
+    use jones::common::{float_angle, Beam, JonesVector};
 
     #[test]
     fn test_horizontal_polarizer() {
@@ -91,7 +91,7 @@ mod test {
 
     proptest! {
        #[test]
-       fn test_polarizer_attenuation(theta in 0_f64..90_f64) {
+       fn test_polarizer_attenuation(theta in float_angle()) {
            let beam = Beam::new(Complex::new(1_f64, 0_f64), Complex::new(0_f64, 0_f64));
            let pol = Polarizer::new(Angle::Degrees(theta));
            let beam_after = beam.apply_element(pol);
@@ -100,8 +100,7 @@ mod test {
        }
 
        #[test]
-       fn test_crossed_polarizers(x in any_complex(), y in any_complex(), theta in 0_f64..90_f64) {
-           let beam = Beam::new(x, y);
+       fn test_crossed_polarizers(beam: Beam, theta in float_angle()) {
            let first_pol = Polarizer::new(Angle::Degrees(theta));
            let second_pol = Polarizer::new(Angle::Degrees(theta + 90.0));
            let beam_after = beam.apply_element(first_pol).apply_element(second_pol);
